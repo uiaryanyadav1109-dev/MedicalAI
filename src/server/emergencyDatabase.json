@@ -1,0 +1,43 @@
+[
+  {
+    "id": "sos-1791478293187",
+    "patientId": "pat-1",
+    "patientName": "Aryan Yadav",
+    "activatedAt": "Oct 08, 2026, 10:21:33 PM",
+    "latitude": 22.928482718514932,
+    "longitude": 88.37788955452139,
+    "accuracy": 149,
+    "locationTimestamp": "Oct 08, 2026, 10:21:33 PM",
+    "locationLink": "https://www.google.com/maps?q=22.928483,88.377890",
+    "permissionStatus": "granted",
+    "locationSource": "gps",
+    "status": "resolved",
+    "notificationStatus": "service_not_configured",
+    "notificationMessage": "External SMS/Emergency gateway not configured in server environment. Direct 1-tap carrier SMS & WhatsApp channels prepared.",
+    "notifiedContacts": [
+      {
+        "contactId": "ec-1",
+        "name": "Sunita Yadav",
+        "phone": "+1 (555) 492-8103",
+        "relationship": "Mother",
+        "priority": 1,
+        "status": "unconfigured",
+        "directDispatchLink": "sms:%2B1%20(555)%20492-8103?body=%F0%9F%9A%A8%20EMERGENCY%20SOS%20%E2%80%94%20MEDICAL%20AI%20ALERT%0APatient%3A%20Aryan%20Yadav%0AEmergency%20Status%3A%20SOS%20ACTIVE%20(Immediate%20Assistance%20Required)%0ATime%3A%20Oct%2008%2C%202026%2C%2010%3A21%3A33%20PM%0AAuthorized%20Recipient%3A%20Sunita%20Yadav%20(Mother)%0ACoordinates%3A%2022.928483%2C%2088.377890%20(%C2%B1149m)%0AClickable%20Map%20Link%3A%20https%3A%2F%2Fwww.google.com%2Fmaps%3Fq%3D22.928483%2C88.377890%0AInstructions%3A%20Please%20contact%20emergency%20services%20(112)%20or%20the%20patient%20immediately.",
+        "personalizedMessage": "🚨 EMERGENCY SOS — MEDICAL AI ALERT\nPatient: Aryan Yadav\nEmergency Status: SOS ACTIVE (Immediate Assistance Required)\nTime: Oct 08, 2026, 10:21:33 PM\nAuthorized Recipient: Sunita Yadav (Mother)\nCoordinates: 22.928483, 88.377890 (±149m)\nClickable Map Link: https://www.google.com/maps?q=22.928483,88.377890\nInstructions: Please contact emergency services (112) or the patient immediately."
+      },
+      {
+        "contactId": "ec-2",
+        "name": "Rajesh Yadav",
+        "phone": "+1 (555) 492-8104",
+        "relationship": "Father",
+        "priority": 1,
+        "status": "unconfigured",
+        "directDispatchLink": "sms:%2B1%20(555)%20492-8104?body=%F0%9F%9A%A8%20EMERGENCY%20SOS%20%E2%80%94%20MEDICAL%20AI%20ALERT%0APatient%3A%20Aryan%20Yadav%0AEmergency%20Status%3A%20SOS%20ACTIVE%20(Immediate%20Assistance%20Required)%0ATime%3A%20Oct%2008%2C%202026%2C%2010%3A21%3A33%20PM%0AAuthorized%20Recipient%3A%20Rajesh%20Yadav%20(Father)%0ACoordinates%3A%2022.928483%2C%2088.377890%20(%C2%B1149m)%0AClickable%20Map%20Link%3A%20https%3A%2F%2Fwww.google.com%2Fmaps%3Fq%3D22.928483%2C88.377890%0AInstructions%3A%20Please%20contact%20emergency%20services%20(112)%20or%20the%20patient%20immediately.",
+        "personalizedMessage": "🚨 EMERGENCY SOS — MEDICAL AI ALERT\nPatient: Aryan Yadav\nEmergency Status: SOS ACTIVE (Immediate Assistance Required)\nTime: Oct 08, 2026, 10:21:33 PM\nAuthorized Recipient: Rajesh Yadav (Father)\nCoordinates: 22.928483, 88.377890 (±149m)\nClickable Map Link: https://www.google.com/maps?q=22.928483,88.377890\nInstructions: Please contact emergency services (112) or the patient immediately."
+      }
+    ],
+    "createdAt": "2026-10-08T16:51:33.181Z",
+    "resolvedAt": "Oct 08, 2026, 10:23:00 PM",
+    "notes": "Patient confirmed safe and in stable condition."
+  }
+]

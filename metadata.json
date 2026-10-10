@@ -1,0 +1,6 @@
+{
+  "name": "Medical AI — AI-Assisted Clinical Intelligence & Preliminary Triage",
+  "description": "Understand your health. Prepare better. Get the right care. Medical AI provides AI-assisted clinical intelligence, preliminary triage, medical report analysis, and doctor handoff preparation.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

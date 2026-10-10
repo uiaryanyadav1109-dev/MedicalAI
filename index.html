@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en" class="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Medical AI — AI-Assisted Clinical Intelligence & Preliminary Triage</title>
+    <meta
+      name="description"
+      content="Understand your health. Prepare better. Get the right care. Medical AI provides preliminary triage, clinical interview context, report analysis, and doctor handoff preparation."
+    />
+    
+    <!-- Open Graph / Social Sharing -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Medical AI — AI-Assisted Clinical Intelligence & Preliminary Triage" />
+    <meta
+      property="og:description"
+      content="Understand your health. Prepare better. Get the right care. Medical AI helps organize health context, analyze reports, and prepare for doctor visits."
+    />
+    <meta property="og:site_name" content="Medical AI" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Medical AI — AI-Assisted Clinical Intelligence & Preliminary Triage" />
+    <meta
+      name="twitter:description"
+      content="Understand your health. Prepare better. Get the right care. Clinical intelligence designed around safety and clarity."
+    />
+
+    <!-- Google Fonts: Plus Jakarta Sans with Noto Sans Devanagari & Bengali for Indic Script Excellence -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Schema.org Structured Data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Medical AI",
+        "applicationCategory": "HealthApplication",
+        "operatingSystem": "All",
+        "description": "AI-assisted clinical intelligence, preliminary triage, medical report analysis, and structured doctor handoffs.",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        }
+      }
+    </script>
+
+    <!-- Theme & Language Initializer: Prevents flash before React hydration -->
+    <script>
+      (function() {
+        try {
+          var storedTheme = localStorage.getItem('medical_ai_theme_preference');
+          var isDark = storedTheme === 'dark' || (!storedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (isDark) {
+            document.documentElement.classList.add('dark');
+            document.documentElement.style.colorScheme = 'dark';
+          } else {
+            document.documentElement.classList.remove('dark');
+            document.documentElement.style.colorScheme = 'light';
+          }
+
+          var storedLang = localStorage.getItem('medical_ai_language_preference');
+          if (storedLang) {
+            document.documentElement.lang = storedLang;
+            document.documentElement.setAttribute('data-lang', storedLang);
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 font-sans antialiased selection:bg-blue-100 selection:text-blue-900 transition-colors">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

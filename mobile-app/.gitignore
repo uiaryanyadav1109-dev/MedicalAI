@@ -1,0 +1,7 @@
+.expo/
+dist/
+node_modules/
+android/
+ios/
+*.log
+npm-debug.*
