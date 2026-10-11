@@ -10,7 +10,16 @@
 
 import express from 'express';
 import { medicalDb } from './medicalDb';
-import { EmergencyEvent, EmergencyContact } from '../types';
+import {
+  EmergencyEvent,
+  EmergencyContact,
+  QrAccessRequest,
+  QrAccessAuditLogEntry,
+  QrAccessReasonKey,
+  QrAccessScope,
+  QrAccessRequestStatus,
+  QrTokenResolution
+} from '../types';
 import { formatIndianPhoneNumber, toDialablePhone } from '../utils/phoneUtils';
 
 // Helper to safely load events from authoritative medical database
@@ -317,6 +326,63 @@ export function createEmergencyApiRouter() {
     });
   });
 
+  // In-memory rate limiting map for QR scans and access requests
+  const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+  function isRateLimited(key: string, limit = 45, windowMs = 60000): boolean {
+    const now = Date.now();
+    const entry = rateLimitMap.get(key);
+    if (!entry || now > entry.resetAt) {
+      rateLimitMap.set(key, { count: 1, resetAt: now + windowMs });
+      return false;
+    }
+    entry.count++;
+    return entry.count > limit;
+  }
+
+  // Name masking helper: masks all but the initial letter (e.g. "Aryan Yadav" -> "A**** Y****")
+  function maskPatientName(name: string): string {
+    if (!name) return 'Patient';
+    return name
+      .trim()
+      .split(/\s+/)
+      .map((part) => (part.length > 1 ? part[0] + '*'.repeat(Math.min(part.length - 1, 4)) : part))
+      .join(' ');
+  }
+
+  // Immutable audit log recorder
+  function recordQrAuditLog(entry: Omit<QrAccessAuditLogEntry, 'id' | 'timestamp'>): QrAccessAuditLogEntry {
+    const db = medicalDb.read();
+    if (!db.qrAccessAuditLogs) db.qrAccessAuditLogs = [];
+    const auditRecord: QrAccessAuditLogEntry = {
+      id: `audit-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
+      timestamp: new Date().toISOString(),
+      ...entry
+    };
+    db.qrAccessAuditLogs.push(auditRecord);
+    medicalDb.write(db);
+    return auditRecord;
+  }
+
+  // Push an in-app notification to the patient
+  function notifyPatient(patientId: string, title: string, message: string, type: 'info' | 'warning' | 'alert') {
+    try {
+      const db = medicalDb.read();
+      if (!db.maskedNotifications) db.maskedNotifications = [];
+      db.maskedNotifications.push({
+        id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        title,
+        message,
+        type,
+        timestamp: new Date().toISOString(),
+        read: false,
+        patientId
+      } as any);
+      medicalDb.write(db);
+    } catch (e) {
+      console.warn('[NOTIFY] Notification save error:', e);
+    }
+  }
+
   // 6. POST /api/emergency/share - Register or sync active patient share record across devices
   router.post('/share', (req, res) => {
     const record = req.body;
@@ -344,15 +410,22 @@ export function createEmergencyApiRouter() {
     res.json({ success: true, record });
   });
 
-  // 7. GET /api/emergency/share/:token - Retrieve patient share record by token for external devices
-  router.get('/share/:token', (req, res) => {
+  // 7. GET /api/emergency/qr-token/:token/resolve - Zero-Trust QR Resolution (Minimally Identifying Verification)
+  router.get('/qr-token/:token/resolve', (req, res) => {
     const { token } = req.params;
+    const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+
+    if (isRateLimited(`resolve-${clientIp}-${token}`, 40)) {
+      res.status(429).json({ success: false, error: 'Rate limit exceeded. Please wait a minute before retrying.' });
+      return;
+    }
+
     const db = medicalDb.read();
     const records = db.qrShareRecords || [];
     let record = records.find((r: any) => r.token === token);
 
-    // If not found in records array, dynamically generate authoritative record from patient profile
-    if (!record) {
+    // Auto-provision fallback record for known test patient if token is valid prefix
+    if (!record && token.startsWith('mai-')) {
       const user = (db.users || []).find((u: any) => u.role === 'patient') || (db.users || [])[0];
       if (user) {
         record = {
@@ -363,16 +436,8 @@ export function createEmergencyApiRouter() {
           dateOfBirth: user.dateOfBirth || '1998-09-14',
           bloodGroup: user.bloodGroup || user.bloodType || 'O+',
           allergies: user.allergies && user.allergies.length > 0 ? user.allergies : ['Penicillin (Severe)', 'Sulfa Drugs (Moderate)'],
-          emergencyContacts: user.emergencyContacts && user.emergencyContacts.length > 0 ? user.emergencyContacts : [
-            {
-              id: 'c-1',
-              name: 'Sunita Yadav',
-              relationship: 'Mother',
-              phone: '+91 81002 78890',
-              isPrimary: true
-            }
-          ],
-          importantMedicalNotes: user.emergencyNotes || 'Verified vaccination registry. Penicillin allergy confirmed. Stage 1 Hypertension (controlled).',
+          emergencyContacts: user.emergencyContacts && user.emergencyContacts.length > 0 ? user.emergencyContacts : [],
+          importantMedicalNotes: user.emergencyNotes || 'Verified vaccination registry.',
           profileImageUrl: user.profileImageUrl,
           createdAt: new Date().toISOString(),
           expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
@@ -389,9 +454,727 @@ export function createEmergencyApiRouter() {
         if (!db.qrShareRecords) db.qrShareRecords = [];
         db.qrShareRecords.push(record);
         medicalDb.write(db);
-        console.log(`[EMERGENCY API] Auto-provisioned verified share record for token=${token}`);
       }
     }
+
+    if (!record) {
+      recordQrAuditLog({
+        qrToken: token,
+        patientId: 'unknown',
+        requesterId: 'unauthenticated',
+        requesterRole: 'guest',
+        action: 'QR_TOKEN_RESOLVED',
+        outcome: 'BLOCKED',
+        details: 'QR Token not found in active database.',
+        ipAddress: clientIp,
+        userAgent: req.headers['user-agent']
+      });
+      res.status(404).json({ success: false, status: 'not_found', error: 'Share record not found' });
+      return;
+    }
+
+    if (record.isRevoked) {
+      recordQrAuditLog({
+        qrToken: token,
+        patientId: record.patientId,
+        requesterId: 'unauthenticated',
+        requesterRole: 'guest',
+        action: 'QR_TOKEN_RESOLVED',
+        outcome: 'REVOKED',
+        details: 'Attempted resolution of a revoked QR token.',
+        ipAddress: clientIp,
+        userAgent: req.headers['user-agent']
+      });
+      res.status(410).json({ success: false, status: 'revoked', error: 'Token has been revoked by the patient.' });
+      return;
+    }
+
+    if (new Date(record.expiresAt).getTime() < Date.now()) {
+      recordQrAuditLog({
+        qrToken: token,
+        patientId: record.patientId,
+        requesterId: 'unauthenticated',
+        requesterRole: 'guest',
+        action: 'QR_TOKEN_RESOLVED',
+        outcome: 'BLOCKED',
+        details: 'Attempted resolution of an expired QR token.',
+        ipAddress: clientIp,
+        userAgent: req.headers['user-agent']
+      });
+      res.status(410).json({ success: false, status: 'expired', error: 'Token has expired.' });
+      return;
+    }
+
+    // Record legitimate scan verification event
+    recordQrAuditLog({
+      qrToken: token,
+      patientId: record.patientId,
+      requesterId: 'unauthenticated',
+      requesterRole: 'guest',
+      action: 'QR_TOKEN_RESOLVED',
+      outcome: 'SUCCESS',
+      details: 'Patient QR scanned and successfully resolved to minimally identifying verification pass.',
+      ipAddress: clientIp,
+      userAgent: req.headers['user-agent']
+    });
+
+    const resolution: QrTokenResolution = {
+      token: record.token,
+      isValid: true,
+      status: 'active',
+      patientIdCode: record.patientIdCode || 'MAI-80429',
+      maskedPatientName: maskPatientName(record.patientName),
+      institutionName: 'MedicalAI Institutional Healthcare Network',
+      requiresReasonAndConsent: true,
+      expiresAt: record.expiresAt
+    };
+
+    res.json({ success: true, resolution, patientId: record.patientId });
+  });
+
+  // 8. POST /api/emergency/access-request - Submit Dedicated Patient Information Access Request
+  router.post('/access-request', (req, res) => {
+    const {
+      qrToken,
+      patientId,
+      requesterId,
+      requesterName,
+      requesterRole,
+      requesterEmail,
+      requesterOrganization,
+      reason,
+      reasonLabel,
+      explanation,
+      requestedScopes,
+      isEmergencyBreakGlass = false,
+      breakGlassConfirmed = false
+    } = req.body || {};
+
+    const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+
+    // 1. Validate Requester Identity
+    if (!requesterId || !requesterName || !requesterRole) {
+      res.status(400).json({
+        success: false,
+        error: 'Authenticated requester identity (ID, Name, and Role) is strictly required.'
+      });
+      return;
+    }
+
+    // 2. Validate QR Token & Patient
+    if (!qrToken) {
+      res.status(400).json({ success: false, error: 'QR token is required.' });
+      return;
+    }
+
+    const db = medicalDb.read();
+    const shareRecords = db.qrShareRecords || [];
+    const shareRec = shareRecords.find((r: any) => r.token === qrToken);
+
+    if (!shareRec) {
+      res.status(404).json({ success: false, error: 'Invalid or unknown QR token.' });
+      return;
+    }
+
+    if (shareRec.isRevoked) {
+      res.status(410).json({ success: false, error: 'This QR code has been revoked by the patient.' });
+      return;
+    }
+
+    if (new Date(shareRec.expiresAt).getTime() < Date.now()) {
+      res.status(410).json({ success: false, error: 'This QR code has expired.' });
+      return;
+    }
+
+    const targetPatientId = patientId || shareRec.patientId;
+    const patientUser = (db.users || []).find((u: any) => u.id === targetPatientId) || {
+      id: targetPatientId,
+      name: shareRec.patientName,
+      patientId: shareRec.patientIdCode
+    };
+
+    // 3. Validate Reason Selection
+    const VALID_REASONS: QrAccessReasonKey[] = [
+      'consultation_treatment',
+      'emergency_assistance',
+      'admission_assessment',
+      'followup_care',
+      'caregiver_assistance',
+      'insurance_admin',
+      'other'
+    ];
+
+    if (!reason || !VALID_REASONS.includes(reason)) {
+      res.status(400).json({
+        success: false,
+        error: 'Please select a valid, recognized reason for accessing patient information.'
+      });
+      return;
+    }
+
+    // 4. Validate Additional Explanation
+    const trimmedExplanation = (explanation || '').trim();
+    if (reason === 'other' && (!trimmedExplanation || trimmedExplanation.length < 5)) {
+      res.status(400).json({
+        success: false,
+        error: 'A detailed written explanation (at least 5 characters) is mandatory when selecting "Other".'
+      });
+      return;
+    }
+
+    if (isEmergencyBreakGlass && (!trimmedExplanation || trimmedExplanation.length < 8)) {
+      res.status(400).json({
+        success: false,
+        error: 'A comprehensive clinical justification is mandatory for emergency break-glass access.'
+      });
+      return;
+    }
+
+    // 5. Validate Requested Scopes
+    const defaultScopes: QrAccessScope = {
+      bloodGroup: true,
+      allergies: true,
+      vitals: true,
+      medications: true,
+      emergencyContacts: true,
+      emergencyNotes: true,
+      clinicalNotes: false,
+      labReports: false
+    };
+    const finalScopes: QrAccessScope = { ...defaultScopes, ...(requestedScopes || {}) };
+
+    const hasAnyScope = Object.values(finalScopes).some((v) => Boolean(v));
+    if (!hasAnyScope) {
+      res.status(400).json({
+        success: false,
+        error: 'At least one category of clinical information must be selected in the access scope.'
+      });
+      return;
+    }
+
+    const now = new Date();
+    const requestId = `req-${now.getTime()}-${Math.random().toString(36).substring(2, 8)}`;
+
+    // 6. Handle Emergency Break-Glass Workflow
+    if (isEmergencyBreakGlass) {
+      const ALLOWED_EMERGENCY_ROLES = ['doctor', 'clinician', 'paramedic', 'emergency_personnel', 'physician'];
+      const normalizedRole = requesterRole.toLowerCase();
+
+      if (!ALLOWED_EMERGENCY_ROLES.some((r) => normalizedRole.includes(r))) {
+        recordQrAuditLog({
+          requestId,
+          qrToken,
+          patientId: targetPatientId,
+          requesterId,
+          requesterRole,
+          requesterName,
+          reason,
+          explanation: trimmedExplanation,
+          action: 'UNAUTHORIZED_ATTEMPT_BLOCKED',
+          outcome: 'BLOCKED',
+          details: `Unauthorized role "${requesterRole}" attempted to invoke emergency break-glass access.`,
+          ipAddress: clientIp,
+          userAgent: req.headers['user-agent']
+        });
+
+        res.status(403).json({
+          success: false,
+          error: 'Emergency break-glass access is strictly restricted to licensed clinicians and certified medical responders.'
+        });
+        return;
+      }
+
+      if (!breakGlassConfirmed) {
+        res.status(400).json({
+          success: false,
+          error: 'Explicit affirmation of clinical emergency necessity is required before invoking break-glass access.'
+        });
+        return;
+      }
+
+      // Emergency access granted under time-limited break-glass protocol (30 minutes)
+      const emergencyExpiresAt = new Date(now.getTime() + 30 * 60 * 1000).toISOString();
+      const emergencyMinimalScope: QrAccessScope = {
+        bloodGroup: true,
+        allergies: true,
+        emergencyContacts: true,
+        emergencyNotes: true,
+        vitals: true,
+        medications: false,
+        clinicalNotes: false,
+        labReports: false
+      };
+
+      const emergencyRequest: QrAccessRequest = {
+        id: requestId,
+        qrToken,
+        patientId: targetPatientId,
+        patientName: patientUser.name || shareRec.patientName,
+        patientIdCode: patientUser.patientId || shareRec.patientIdCode,
+        requesterId,
+        requesterName,
+        requesterRole,
+        requesterEmail,
+        requesterOrganization: requesterOrganization || 'Emergency Services',
+        reason,
+        reasonLabel: reasonLabel || 'Emergency Medical Assistance',
+        explanation: trimmedExplanation,
+        requestedScopes: finalScopes,
+        approvedScopes: emergencyMinimalScope,
+        status: 'approved',
+        isEmergencyBreakGlass: true,
+        requiresPatientConsent: false,
+        createdAt: now.toISOString(),
+        decidedAt: now.toISOString(),
+        expiresAt: emergencyExpiresAt,
+        accessCount: 0,
+        auditLog: []
+      };
+
+      if (!db.qrAccessRequests) db.qrAccessRequests = [];
+      db.qrAccessRequests.push(emergencyRequest);
+      medicalDb.write(db);
+
+      recordQrAuditLog({
+        requestId,
+        qrToken,
+        patientId: targetPatientId,
+        requesterId,
+        requesterRole,
+        requesterName,
+        reason,
+        explanation: trimmedExplanation,
+        scopes: Object.keys(emergencyMinimalScope).filter((k) => (emergencyMinimalScope as any)[k]),
+        action: 'EMERGENCY_BREAK_GLASS_INVOKED',
+        outcome: 'SUCCESS',
+        details: `Emergency break-glass access invoked by ${requesterName} (${requesterRole}): "${trimmedExplanation}"`,
+        ipAddress: clientIp,
+        userAgent: req.headers['user-agent']
+      });
+
+      notifyPatient(
+        targetPatientId,
+        '🚨 Emergency Break-Glass Access Alert',
+        `Healthcare professional ${requesterName} (${requesterRole}) accessed your emergency health profile under break-glass protocol: "${trimmedExplanation}".`,
+        'alert'
+      );
+
+      res.status(201).json({
+        success: true,
+        message: 'Emergency break-glass access authorized. Time-limited emergency scope granted.',
+        request: emergencyRequest
+      });
+      return;
+    }
+
+    // 7. Standard Non-Emergency Workflow (Requires Authenticated Patient Consent)
+    const accessRequest: QrAccessRequest = {
+      id: requestId,
+      qrToken,
+      patientId: targetPatientId,
+      patientName: patientUser.name || shareRec.patientName,
+      patientIdCode: patientUser.patientId || shareRec.patientIdCode,
+      requesterId,
+      requesterName,
+      requesterRole,
+      requesterEmail,
+      requesterOrganization,
+      reason,
+      reasonLabel: reasonLabel || 'Clinical Assessment & Care',
+      explanation: trimmedExplanation,
+      requestedScopes: finalScopes,
+      status: 'pending',
+      isEmergencyBreakGlass: false,
+      requiresPatientConsent: true,
+      createdAt: now.toISOString(),
+      expiresAt: new Date(now.getTime() + 60 * 60 * 1000).toISOString(), // 1h request validity window
+      accessCount: 0,
+      auditLog: []
+    };
+
+    if (!db.qrAccessRequests) db.qrAccessRequests = [];
+    db.qrAccessRequests.push(accessRequest);
+    medicalDb.write(db);
+
+    recordQrAuditLog({
+      requestId,
+      qrToken,
+      patientId: targetPatientId,
+      requesterId,
+      requesterRole,
+      requesterName,
+      reason,
+      explanation: trimmedExplanation,
+      scopes: Object.keys(finalScopes).filter((k) => (finalScopes as any)[k]),
+      action: 'ACCESS_REQUEST_SUBMITTED',
+      outcome: 'SUCCESS',
+      details: `Access request submitted by ${requesterName} (${requesterRole}) for reason: ${reasonLabel || reason}. Awaiting patient consent.`,
+      ipAddress: clientIp,
+      userAgent: req.headers['user-agent']
+    });
+
+    notifyPatient(
+      targetPatientId,
+      '🛡️ New Health Data Access Request',
+      `${requesterName} (${requesterRole}) is requesting access to your medical information for "${reasonLabel || reason}". Review and authorize in your dashboard.`,
+      'info'
+    );
+
+    res.status(201).json({
+      success: true,
+      message: 'Access request successfully registered. Awaiting patient authorization.',
+      request: accessRequest
+    });
+  });
+
+  // 9. GET /api/emergency/access-requests/patient/:patientId - List Access Requests for Authenticated Patient
+  router.get('/access-requests/patient/:patientId', (req, res) => {
+    const { patientId } = req.params;
+    const db = medicalDb.read();
+    const requests = db.qrAccessRequests || [];
+
+    const now = Date.now();
+    // Auto-expire requests that have passed their expiration window
+    requests.forEach((r) => {
+      if ((r.status === 'pending' || r.status === 'approved') && r.expiresAt && new Date(r.expiresAt).getTime() < now) {
+        r.status = 'expired';
+      }
+    });
+    medicalDb.write(db);
+
+    const patientRequests = requests
+      .filter((r) => r.patientId === patientId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    res.json({ success: true, requests: patientRequests });
+  });
+
+  // 10. GET /api/emergency/access-requests/requester/:requesterId - List Requests Created by Requester
+  router.get('/access-requests/requester/:requesterId', (req, res) => {
+    const { requesterId } = req.params;
+    const db = medicalDb.read();
+    const requests = db.qrAccessRequests || [];
+
+    const now = Date.now();
+    requests.forEach((r) => {
+      if ((r.status === 'pending' || r.status === 'approved') && r.expiresAt && new Date(r.expiresAt).getTime() < now) {
+        r.status = 'expired';
+      }
+    });
+    medicalDb.write(db);
+
+    const requesterRequests = requests
+      .filter((r) => r.requesterId === requesterId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    res.json({ success: true, requests: requesterRequests });
+  });
+
+  // 11. GET /api/emergency/access-requests/:requestId - Retrieve Specific Request Details
+  router.get('/access-requests/:requestId', (req, res) => {
+    const { requestId } = req.params;
+    const db = medicalDb.read();
+    const requests = db.qrAccessRequests || [];
+    const request = requests.find((r) => r.id === requestId);
+
+    if (!request) {
+      res.status(404).json({ success: false, error: 'Access request not found.' });
+      return;
+    }
+
+    if ((request.status === 'pending' || request.status === 'approved') && request.expiresAt && new Date(request.expiresAt).getTime() < Date.now()) {
+      request.status = 'expired';
+      medicalDb.write(db);
+    }
+
+    res.json({ success: true, request });
+  });
+
+  // 12. POST /api/emergency/access-requests/:requestId/decide - Patient Consent Approval or Denial
+  router.post('/access-requests/:requestId/decide', (req, res) => {
+    const { requestId } = req.params;
+    const { decision, decidedBy, approvedScopes, durationMinutes = 60 } = req.body || {};
+
+    if (!decision || !['approved', 'denied'].includes(decision)) {
+      res.status(400).json({ success: false, error: 'A valid decision ("approved" or "denied") is required.' });
+      return;
+    }
+
+    const db = medicalDb.read();
+    const requests = db.qrAccessRequests || [];
+    const request = requests.find((r) => r.id === requestId);
+
+    if (!request) {
+      res.status(404).json({ success: false, error: 'Access request not found.' });
+      return;
+    }
+
+    if (request.status !== 'pending') {
+      res.status(400).json({
+        success: false,
+        error: `Cannot modify request with status "${request.status}".`
+      });
+      return;
+    }
+
+    // Verify authorized decider (patient identity validation)
+    if (decidedBy && decidedBy !== request.patientId && !decidedBy.startsWith('admin')) {
+      res.status(403).json({
+        success: false,
+        error: 'Only the patient or an explicitly authorized representative may consent to data access.'
+      });
+      return;
+    }
+
+    const now = new Date();
+    request.decidedAt = now.toISOString();
+    request.patientDecisionBy = decidedBy || request.patientId;
+
+    if (decision === 'approved') {
+      request.status = 'approved';
+      request.approvedScopes = approvedScopes || request.requestedScopes;
+      request.expiresAt = new Date(now.getTime() + durationMinutes * 60 * 1000).toISOString();
+
+      recordQrAuditLog({
+        requestId: request.id,
+        qrToken: request.qrToken,
+        patientId: request.patientId,
+        requesterId: request.requesterId,
+        requesterRole: request.requesterRole,
+        requesterName: request.requesterName,
+        action: 'PATIENT_CONSENT_GRANTED',
+        outcome: 'SUCCESS',
+        scopes: Object.keys(request.approvedScopes || {}).filter((k) => (request.approvedScopes as any)[k]),
+        details: `Patient granted access to ${request.requesterName} for duration: ${durationMinutes} minutes.`
+      });
+
+      notifyPatient(
+        request.patientId,
+        '✅ Access Granted',
+        `You approved data access for ${request.requesterName} (${request.requesterRole}) for ${durationMinutes} minutes.`,
+        'info'
+      );
+    } else {
+      request.status = 'denied';
+
+      recordQrAuditLog({
+        requestId: request.id,
+        qrToken: request.qrToken,
+        patientId: request.patientId,
+        requesterId: request.requesterId,
+        requesterRole: request.requesterRole,
+        requesterName: request.requesterName,
+        action: 'PATIENT_CONSENT_DENIED',
+        outcome: 'DENIED',
+        details: `Patient denied access request from ${request.requesterName} (${request.requesterRole}).`
+      });
+
+      notifyPatient(
+        request.patientId,
+        '🚫 Access Request Denied',
+        `You denied the data access request from ${request.requesterName} (${request.requesterRole}).`,
+        'info'
+      );
+    }
+
+    medicalDb.write(db);
+    res.json({ success: true, message: `Access request has been ${decision}.`, request });
+  });
+
+  // 13. POST /api/emergency/access-requests/:requestId/revoke - Revoke Active Access Grant
+  router.post('/access-requests/:requestId/revoke', (req, res) => {
+    const { requestId } = req.params;
+    const { revokedBy, revocationReason = 'Revoked by patient' } = req.body || {};
+
+    const db = medicalDb.read();
+    const requests = db.qrAccessRequests || [];
+    const request = requests.find((r) => r.id === requestId);
+
+    if (!request) {
+      res.status(404).json({ success: false, error: 'Access request not found.' });
+      return;
+    }
+
+    if (request.status !== 'approved') {
+      res.status(400).json({ success: false, error: 'Only approved access grants can be revoked.' });
+      return;
+    }
+
+    const now = new Date();
+    request.status = 'revoked';
+    request.revokedAt = now.toISOString();
+    request.revocationReason = revocationReason;
+
+    recordQrAuditLog({
+      requestId: request.id,
+      qrToken: request.qrToken,
+      patientId: request.patientId,
+      requesterId: request.requesterId,
+      requesterRole: request.requesterRole,
+      requesterName: request.requesterName,
+      action: 'ACCESS_REVOKED',
+      outcome: 'REVOKED',
+      details: `Access grant revoked by ${revokedBy || 'patient'}: "${revocationReason}".`
+    });
+
+    notifyPatient(
+      request.patientId,
+      '🛑 Access Grant Revoked',
+      `Access grant for ${request.requesterName} was revoked immediately.`,
+      'warning'
+    );
+
+    medicalDb.write(db);
+    res.json({ success: true, message: 'Access grant has been revoked immediately.', request });
+  });
+
+  // 14. GET /api/emergency/access-requests/:requestId/data - Retrieve Scoped Protected Health Information
+  router.get('/access-requests/:requestId/data', (req, res) => {
+    const { requestId } = req.params;
+    const { requesterId } = req.query;
+
+    const db = medicalDb.read();
+    const requests = db.qrAccessRequests || [];
+    const request = requests.find((r) => r.id === requestId);
+
+    if (!request) {
+      res.status(404).json({ success: false, error: 'Access request not found.' });
+      return;
+    }
+
+    // 1. Enforce Status Check
+    if (request.status !== 'approved') {
+      res.status(403).json({
+        success: false,
+        error: `Access denied. Request status is "${request.status}". Protected data cannot be accessed without an active approval.`
+      });
+      return;
+    }
+
+    // 2. Enforce Expiration
+    const now = Date.now();
+    if (request.expiresAt && new Date(request.expiresAt).getTime() < now) {
+      request.status = 'expired';
+      medicalDb.write(db);
+
+      recordQrAuditLog({
+        requestId: request.id,
+        qrToken: request.qrToken,
+        patientId: request.patientId,
+        requesterId: (requesterId as string) || request.requesterId,
+        requesterRole: request.requesterRole,
+        action: 'ACCESS_EXPIRED',
+        outcome: 'BLOCKED',
+        details: 'Attempted to access protected records with an expired access grant.'
+      });
+
+      res.status(403).json({ success: false, error: 'Access grant has expired. A new access request is required.' });
+      return;
+    }
+
+    // 3. Enforce Requester Identity Guard
+    if (requesterId && requesterId !== request.requesterId && !String(requesterId).startsWith('admin')) {
+      res.status(403).json({
+        success: false,
+        error: 'Forbidden. Access grant belongs to a different authenticated user.'
+      });
+      return;
+    }
+
+    // 4. Retrieve Patient Records & Filter by Approved Scopes
+    const patientUser = (db.users || []).find((u: any) => u.id === request.patientId) || (db.users || [])[0];
+    const approvedScopes: QrAccessScope = request.approvedScopes || {
+      bloodGroup: true,
+      allergies: true,
+      vitals: false,
+      medications: false,
+      emergencyContacts: true,
+      emergencyNotes: true,
+      clinicalNotes: false,
+      labReports: false
+    };
+
+    const scopedData: any = {};
+
+    if (approvedScopes.bloodGroup) {
+      scopedData.bloodGroup = patientUser.bloodGroup || patientUser.bloodType || 'O+';
+    }
+    if (approvedScopes.allergies) {
+      scopedData.allergies = patientUser.allergies || ['Penicillin (Severe)'];
+    }
+    if (approvedScopes.emergencyContacts) {
+      scopedData.emergencyContacts = patientUser.emergencyContacts || [];
+    }
+    if (approvedScopes.emergencyNotes) {
+      scopedData.emergencyNotes = patientUser.emergencyNotes || 'Verified emergency registry.';
+    }
+    if (approvedScopes.vitals) {
+      scopedData.vitals = (db.vitals || []).filter((v: any) => v.patientId === request.patientId).slice(0, 5);
+    }
+    if (approvedScopes.medications) {
+      scopedData.medications = (db.medications || []).filter((m: any) => m.patientId === request.patientId);
+    }
+    if (approvedScopes.clinicalNotes) {
+      scopedData.consultations = (db.consultations || []).filter((c: any) => c.patientId === request.patientId);
+    }
+    if (approvedScopes.labReports) {
+      scopedData.reports = (db.reports || []).filter((r: any) => r.patientId === request.patientId);
+    }
+
+    // 5. Audit Record Access Event
+    request.accessCount = (request.accessCount || 0) + 1;
+    request.lastAccessedAt = new Date().toISOString();
+    medicalDb.write(db);
+
+    recordQrAuditLog({
+      requestId: request.id,
+      qrToken: request.qrToken,
+      patientId: request.patientId,
+      requesterId: request.requesterId,
+      requesterRole: request.requesterRole,
+      requesterName: request.requesterName,
+      scopes: Object.keys(approvedScopes).filter((k) => (approvedScopes as any)[k]),
+      action: 'PROTECTED_DATA_ACCESSED',
+      outcome: 'SUCCESS',
+      details: `Protected health data successfully accessed under approved grant (Scopes: ${Object.keys(scopedData).join(', ')}).`
+    });
+
+    res.json({
+      success: true,
+      patientId: request.patientId,
+      patientName: patientUser.name,
+      patientIdCode: patientUser.patientId || patientUser.mrn || 'MAI-80429',
+      approvedScopes,
+      isEmergencyBreakGlass: request.isEmergencyBreakGlass,
+      expiresAt: request.expiresAt,
+      data: scopedData
+    });
+  });
+
+  // 15. GET /api/emergency/access-audit-logs - Immutable Audit Log Retrieval
+  router.get('/access-audit-logs', (req, res) => {
+    const { patientId, requestId } = req.query;
+    const db = medicalDb.read();
+    let logs = db.qrAccessAuditLogs || [];
+
+    if (patientId && typeof patientId === 'string') {
+      logs = logs.filter((l) => l.patientId === patientId);
+    }
+    if (requestId && typeof requestId === 'string') {
+      logs = logs.filter((l) => l.requestId === requestId);
+    }
+
+    res.json({ success: true, count: logs.length, logs });
+  });
+
+  // 16. GET /api/emergency/share/:token - Legacy Token Retrieval (Strictly Scoped)
+  router.get('/share/:token', (req, res) => {
+    const { token } = req.params;
+    const { grantId } = req.query;
+
+    const db = medicalDb.read();
+    const records = db.qrShareRecords || [];
+    const record = records.find((r: any) => r.token === token);
 
     if (!record) {
       res.status(404).json({ success: false, reason: 'not_found', error: 'Share record not found' });
@@ -408,37 +1191,31 @@ export function createEmergencyApiRouter() {
       return;
     }
 
-    // Dynamic Live Sync: Overlay latest patient updates from authoritative user database
-    const patientUser =
-      (db.users || []).find((u: any) => u.id === record.patientId || u.patientId === record.patientIdCode) ||
-      (db.users || []).find((u: any) => u.role === 'patient');
-
-    if (patientUser) {
-      if (patientUser.name) record.patientName = patientUser.name;
-      if (patientUser.bloodGroup || patientUser.bloodType) {
-        record.bloodGroup = patientUser.bloodGroup || patientUser.bloodType;
-      }
-      if (patientUser.allergies && patientUser.allergies.length > 0) {
-        record.allergies = patientUser.allergies;
-      }
-      if (patientUser.emergencyContacts && patientUser.emergencyContacts.length > 0) {
-        record.emergencyContacts = patientUser.emergencyContacts;
-      }
-      if (patientUser.emergencyNotes || (patientUser as any).importantMedicalNotes) {
-        record.importantMedicalNotes = patientUser.emergencyNotes || (patientUser as any).importantMedicalNotes;
-      }
-      if (patientUser.profileImageUrl) {
-        record.profileImageUrl = patientUser.profileImageUrl;
-      }
-      if (patientUser.dateOfBirth) {
-        record.dateOfBirth = patientUser.dateOfBirth;
-      }
-      if (patientUser.patientId || patientUser.mrn) {
-        record.patientIdCode = patientUser.patientId || patientUser.mrn;
-      }
+    // Zero-Trust: If accessed without an authorized grantId, return safe minimized verification response
+    if (!grantId) {
+      res.json({
+        success: true,
+        requiresAuthorization: true,
+        token: record.token,
+        patientId: record.patientId,
+        patientIdCode: record.patientIdCode || 'MAI-80429',
+        maskedPatientName: maskPatientName(record.patientName),
+        institutionName: 'MedicalAI Institutional Health Network',
+        expiresAt: record.expiresAt
+      });
+      return;
     }
 
-    res.json({ success: true, record });
+    // If grantId provided, verify that grant is approved
+    const requests = db.qrAccessRequests || [];
+    const grant = requests.find((r) => r.id === grantId && r.qrToken === token);
+
+    if (!grant || grant.status !== 'approved' || (grant.expiresAt && new Date(grant.expiresAt).getTime() < Date.now())) {
+      res.status(403).json({ success: false, error: 'Unauthorized. Valid approved access grant is required.' });
+      return;
+    }
+
+    res.json({ success: true, record, authorizedGrant: grant });
   });
 
   return router;

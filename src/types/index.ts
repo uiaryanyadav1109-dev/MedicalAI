@@ -40,6 +40,7 @@ export type PatientDashboardRoutePath =
   | '/dashboard/triage'
   | '/dashboard/doctor-handoff'
   | '/dashboard/qr-sharing'
+  | '/dashboard/data-access-requests'
   | '/dashboard/profile'
   | '/dashboard/settings'
   | '/dashboard/identity-verification';
@@ -140,6 +141,103 @@ export interface PatientShareRecord {
     userAgent?: string;
     action: string;
   }[];
+}
+
+export type QrAccessReasonKey =
+  | 'consultation_treatment'
+  | 'emergency_assistance'
+  | 'admission_assessment'
+  | 'followup_care'
+  | 'caregiver_assistance'
+  | 'insurance_admin'
+  | 'other';
+
+export interface QrAccessScope {
+  bloodGroup: boolean;
+  allergies: boolean;
+  vitals: boolean;
+  medications: boolean;
+  emergencyContacts: boolean;
+  emergencyNotes: boolean;
+  clinicalNotes: boolean;
+  labReports: boolean;
+}
+
+export type QrAccessRequestStatus =
+  | 'pending'
+  | 'approved'
+  | 'denied'
+  | 'expired'
+  | 'revoked'
+  | 'completed';
+
+export interface QrAccessAuditLogEntry {
+  id: string;
+  timestamp: string;
+  action:
+    | 'QR_TOKEN_RESOLVED'
+    | 'ACCESS_REQUEST_SUBMITTED'
+    | 'PATIENT_CONSENT_GRANTED'
+    | 'PATIENT_CONSENT_DENIED'
+    | 'EMERGENCY_BREAK_GLASS_INVOKED'
+    | 'PROTECTED_DATA_ACCESSED'
+    | 'ACCESS_REVOKED'
+    | 'ACCESS_EXPIRED'
+    | 'UNAUTHORIZED_ATTEMPT_BLOCKED';
+  requestId?: string;
+  qrToken?: string;
+  patientId: string;
+  requesterId: string;
+  requesterRole: string;
+  requesterName?: string;
+  reason?: string;
+  explanation?: string;
+  scopes?: string[];
+  outcome: 'SUCCESS' | 'DENIED' | 'BLOCKED' | 'REVOKED';
+  ipAddress?: string;
+  userAgent?: string;
+  details?: string;
+}
+
+export interface QrAccessRequest {
+  id: string;
+  qrToken: string;
+  patientId: string;
+  patientName: string;
+  patientIdCode: string;
+  requesterId: string;
+  requesterName: string;
+  requesterRole: 'doctor' | 'clinician' | 'paramedic' | 'caregiver' | 'patient' | 'admin' | 'guest' | string;
+  requesterEmail?: string;
+  requesterOrganization?: string;
+  reason: QrAccessReasonKey;
+  reasonLabel: string;
+  explanation: string;
+  requestedScopes: QrAccessScope;
+  approvedScopes?: QrAccessScope;
+  status: QrAccessRequestStatus;
+  isEmergencyBreakGlass: boolean;
+  requiresPatientConsent: boolean;
+  createdAt: string;
+  decidedAt?: string;
+  expiresAt?: string;
+  revokedAt?: string;
+  revocationReason?: string;
+  lastAccessedAt?: string;
+  accessCount?: number;
+  patientDecisionBy?: string;
+  auditLog: QrAccessAuditLogEntry[];
+}
+
+export interface QrTokenResolution {
+  token: string;
+  isValid: boolean;
+  status: 'active' | 'expired' | 'revoked' | 'not_found';
+  patientIdCode: string;
+  maskedPatientName: string;
+  institutionName: string;
+  requiresReasonAndConsent: boolean;
+  expiresAt?: string;
 }
 
 export interface DetailedAllergy {

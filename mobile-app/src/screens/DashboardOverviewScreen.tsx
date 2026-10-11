@@ -15,6 +15,7 @@ import {
   FileText,
   CreditCard,
   ShieldCheck,
+  ShieldAlert,
   Activity,
   AlertTriangle,
   HeartPulse,
@@ -331,6 +332,17 @@ export const DashboardOverviewScreen: React.FC<DashboardOverviewProps> = ({ navi
             </View>
             <Text style={styles.toolTitle}>Identity KYC</Text>
             <Text style={styles.toolSub}>Credential verification</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.toolCard}
+            onPress={() => navigation.navigate('DataAccessRequests')}
+          >
+            <View style={[styles.toolIconBox, { backgroundColor: 'rgba(13, 148, 136, 0.15)' }]}>
+              <ShieldAlert size={22} color="#0D9488" />
+            </View>
+            <Text style={styles.toolTitle}>QR Consent</Text>
+            <Text style={styles.toolSub}>Manage scan requests</Text>
           </TouchableOpacity>
         </View>
       </View>

@@ -77,6 +77,7 @@ export const bn = {
     activeProtocol: 'জরুরি প্রোটোকল সক্রিয়',
     viewCard: 'স্বাস্থ্য কার্ড দেখুন',
     shareQr: 'নিরাপদ কিউআর শেয়ার করুন',
+    dataAccessRequests: 'ডেটা অ্যাক্সেস অনুরোধ',
     downloadPdf: 'স্বাস্থ্য রেকর্ড ডাউনলোড করুন (PDF)'
   },
   doctor: {

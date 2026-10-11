@@ -17,8 +17,10 @@ import {
   CheckCircle2,
   Flame,
   ArrowRight,
-  Clock
+  Clock,
+  QrCode
 } from 'lucide-react';
+import { DoctorQrAccessModal } from './DoctorQrAccessModal';
 
 interface DoctorHeaderProps {
   currentRoute: RoutePath;
@@ -40,6 +42,7 @@ export const DoctorHeader: React.FC<DoctorHeaderProps> = ({
   const [search, setSearch] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [matchingPatients, setMatchingPatients] = useState<PatientRecord[]>([]);
   const [dashboardData, setDashboardData] = useState<any>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -141,6 +144,16 @@ export const DoctorHeader: React.FC<DoctorHeaderProps> = ({
               <span>{emergencyAlertCount} CRITICAL ALERT</span>
             </button>
           )}
+
+          {/* Scan Patient QR / Request Access Button */}
+          <button
+            onClick={() => setIsQrModalOpen(true)}
+            className="px-2.5 sm:px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+            title="Scan or enter Patient QR code to request authorized records access"
+          >
+            <QrCode className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Scan Patient QR</span>
+          </button>
 
           {/* Search by MRN or Name with Autocomplete Dropdown */}
           <div className="hidden md:flex items-center relative w-48 lg:w-64" ref={dropdownRef}>
@@ -283,6 +296,13 @@ export const DoctorHeader: React.FC<DoctorHeaderProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Clinician QR Access & Break-Glass Modal */}
+      <DoctorQrAccessModal
+        isOpen={isQrModalOpen}
+        onClose={() => setIsQrModalOpen(false)}
+        onSelectPatient={onSelectPatient}
+      />
     </header>
   );
 };

@@ -522,6 +522,85 @@ class MobileApiClient {
       });
     }
   };
+
+  // ==========================================
+  // SECURE QR ACCESS & PATIENT CONSENT
+  // ==========================================
+  public qrAccess = {
+    resolveToken: async (token: string) => {
+      return this.request<{ success: boolean; resolution?: any; error?: string }>(`/emergency/qr-token/${token}/resolve`);
+    },
+
+    submitAccessRequest: async (payload: {
+      token: string;
+      requesterId: string;
+      requesterName: string;
+      requesterRole: string;
+      requesterEmail?: string;
+      requesterOrganization?: string;
+      reason: string;
+      explanation: string;
+      scopes: Record<string, boolean>;
+      isEmergencyBreakGlass?: boolean;
+    }) => {
+      return this.request<{ success: boolean; request?: any; error?: string }>('/emergency/access-request', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    },
+
+    getRequestsForPatient: async (patientId: string = this.currentPatientId) => {
+      return this.request<{ success: boolean; requests: any[] }>(`/emergency/access-requests/patient/${patientId}`);
+    },
+
+    getRequestsForRequester: async (requesterId: string) => {
+      return this.request<{ success: boolean; requests: any[] }>(`/emergency/access-requests/requester/${requesterId}`);
+    },
+
+    decideRequest: async (
+      requestId: string,
+      payload: {
+        decision: 'approved' | 'denied';
+        patientId: string;
+        approvedScopes?: Record<string, boolean>;
+        grantDurationMinutes?: number;
+      }
+    ) => {
+      return this.request<{ success: boolean; request?: any; error?: string }>(
+        `/emergency/access-requests/${requestId}/decide`,
+        {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        }
+      );
+    },
+
+    revokeGrant: async (
+      requestId: string,
+      payload: {
+        patientId: string;
+        reason?: string;
+      }
+    ) => {
+      return this.request<{ success: boolean; request?: any; error?: string }>(
+        `/emergency/access-requests/${requestId}/revoke`,
+        {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        }
+      );
+    },
+
+    fetchScopedData: async (requestId: string, requesterId: string) => {
+      return this.request<{ success: boolean; data?: any; error?: string }>(
+        `/emergency/access-requests/${requestId}/data?requesterId=${encodeURIComponent(requesterId)}`
+      );
+    },
+
+    getAuditLogs: async () => {
+      return this.request<{ success: boolean; logs: any[] }>('/emergency/access-audit-logs');
+    },
+  };
 }
 
 export const api = new MobileApiClient();

@@ -57,7 +57,9 @@ import {
   ClinicalAuditAction,
   ClinicalAuditOutcome,
   ClinicalMetricsData,
-  ClinicalMetricsFilter
+  ClinicalMetricsFilter,
+  QrAccessRequest,
+  QrAccessAuditLogEntry
 } from '../types';
 
 export interface MedicalDatabaseSchema {
@@ -88,6 +90,8 @@ export interface MedicalDatabaseSchema {
   caseAssignments?: ClinicianCaseAssignment[];
   clinicianAuditLogs?: ClinicianAccountAuditLog[];
   qrShareRecords?: any[];
+  qrAccessRequests?: QrAccessRequest[];
+  qrAccessAuditLogs?: QrAccessAuditLogEntry[];
 }
 
 const isBrowserEnv = typeof window !== 'undefined' || typeof process === 'undefined' || typeof process.cwd !== 'function';

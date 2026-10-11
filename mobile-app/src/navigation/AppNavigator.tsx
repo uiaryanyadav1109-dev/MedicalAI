@@ -17,6 +17,7 @@ import { DoctorHandoffScreen } from '../screens/DoctorHandoffScreen';
 import { IdentityVerificationScreen } from '../screens/IdentityVerificationScreen';
 import { EmergencySosScreen } from '../screens/EmergencySosScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { DataAccessRequestsScreen } from '../screens/DataAccessRequestsScreen';
 
 export type RootStackParamList = {
   Auth: undefined;
@@ -25,6 +26,7 @@ export type RootStackParamList = {
   Appointments: undefined;
   DoctorDashboard: undefined;
   PatientCard: undefined;
+  DataAccessRequests: undefined;
   Reports: undefined;
   Vitals: undefined;
   Medications: undefined;
@@ -98,6 +100,11 @@ export const AppNavigator: React.FC = () => {
             name="PatientCard"
             component={PatientCardScreen}
             options={{ title: 'Digital Health Pass' }}
+          />
+          <Stack.Screen
+            name="DataAccessRequests"
+            component={DataAccessRequestsScreen}
+            options={{ title: 'Data Access Requests & Consent' }}
           />
           <Stack.Screen
             name="Reports"

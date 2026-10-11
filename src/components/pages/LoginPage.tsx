@@ -61,11 +61,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onOpenAssessme
       );
 
       if (response.success) {
-        if (portalType === 'patient') {
-          onNavigate('/dashboard');
-        } else {
-          onNavigate('/doctor');
-        }
+        onNavigate(resolveTargetRoute(portalType === 'patient' ? '/dashboard' : '/doctor'));
       } else {
         setServerError(response.error || 'Email or password is incorrect. Please try again.');
       }
@@ -76,13 +72,22 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onOpenAssessme
     }
   };
 
+  const resolveTargetRoute = (fallbackRoute: RoutePath): RoutePath => {
+    try {
+      const intended = sessionStorage.getItem('medical_ai_intended_route') as RoutePath | null;
+      if (intended && (intended.startsWith('/dashboard') || intended.startsWith('/doctor'))) {
+        sessionStorage.removeItem('medical_ai_intended_route');
+        return intended;
+      }
+    } catch {
+      // safe fallback
+    }
+    return fallbackRoute;
+  };
+
   const handleDemoLogin = (role: 'patient' | 'doctor') => {
     loginAsDemo(role);
-    if (role === 'patient') {
-      onNavigate('/dashboard');
-    } else {
-      onNavigate('/doctor');
-    }
+    onNavigate(resolveTargetRoute(role === 'patient' ? '/dashboard' : '/doctor'));
   };
 
   const handleGoogleLogin = async () => {
@@ -92,11 +97,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onOpenAssessme
       const targetRole = portalType === 'patient' ? 'patient' : 'doctor';
       const response = await loginWithGoogle(targetRole);
       if (response.success) {
-        if (targetRole === 'patient') {
-          onNavigate('/dashboard');
-        } else {
-          onNavigate('/doctor');
-        }
+        onNavigate(resolveTargetRoute(targetRole === 'patient' ? '/dashboard' : '/doctor'));
       } else if (response.error === 'NEEDS_CHOOSER') {
         setIsChooserOpen(true);
       } else {
@@ -113,15 +114,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onOpenAssessme
     const targetRole = portalType === 'patient' ? 'patient' : 'doctor';
     const response = await loginWithGoogleAccount(account, targetRole);
     if (response.success) {
-      if (targetRole === 'patient') {
-        onNavigate('/dashboard');
-      } else {
-        onNavigate('/doctor');
-      }
+      onNavigate(resolveTargetRoute(targetRole === 'patient' ? '/dashboard' : '/doctor'));
     } else {
       setServerError(response.error || 'Google account sign-in failed.');
     }
   };
+
+  const intendedRoute = typeof window !== 'undefined' ? sessionStorage.getItem('medical_ai_intended_route') : null;
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 font-sans">
@@ -136,6 +135,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onOpenAssessme
         {/* Right: Clean Authentication Card */}
         <div className="flex-1 flex items-center justify-center p-6 sm:p-10 lg:p-14">
           <div className="w-full max-w-md space-y-6">
+            {intendedRoute && (
+              <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 flex items-center gap-2.5">
+                <Lock className="w-4 h-4 text-blue-600 shrink-0" />
+                <span>Sign in below to access your confidential data access and consent controls.</span>
+              </div>
+            )}
             {/* Header copy */}
             <div className="space-y-1.5 text-center sm:text-left">
               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">

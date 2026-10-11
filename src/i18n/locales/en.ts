@@ -77,6 +77,7 @@ export const en = {
     activeProtocol: 'Emergency Protocol Active',
     viewCard: 'View Health Card',
     shareQr: 'Share Secure QR',
+    dataAccessRequests: 'Data Access Requests',
     downloadPdf: 'Export Health Records (PDF)'
   },
   doctor: {

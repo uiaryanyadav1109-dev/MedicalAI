@@ -77,6 +77,7 @@ export const hi = {
     activeProtocol: 'आपातकालीन प्रोटोकॉल सक्रिय',
     viewCard: 'स्वास्थ्य कार्ड देखें',
     shareQr: 'सुरक्षित क्यूआर शेयर करें',
+    dataAccessRequests: 'डेटा एक्सेस अनुरोध',
     downloadPdf: 'स्वास्थ्य रिकॉर्ड डाउनलोड करें (PDF)'
   },
   doctor: {

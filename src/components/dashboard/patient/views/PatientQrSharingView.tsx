@@ -118,13 +118,23 @@ export const PatientQrSharingView: React.FC<{ onNavigate: (route: RoutePath) => 
           </p>
         </div>
 
-        <button
-          onClick={() => setShowClinicianPreview(!showClinicianPreview)}
-          className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors flex items-center gap-2 shrink-0"
-        >
-          <Eye className="w-4 h-4" />
-          <span>{showClinicianPreview ? 'Hide Clinician Screen' : 'Preview Doctor Screen'}</span>
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => onNavigate('/dashboard/data-access-requests')}
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
+          >
+            <ShieldCheck className="w-4 h-4" />
+            <span>Review Access Requests & Consent</span>
+          </button>
+
+          <button
+            onClick={() => setShowClinicianPreview(!showClinicianPreview)}
+            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors flex items-center gap-2 shrink-0 cursor-pointer"
+          >
+            <Eye className="w-4 h-4" />
+            <span>{showClinicianPreview ? 'Hide Clinician Screen' : 'Preview Doctor Screen'}</span>
+          </button>
+        </div>
       </div>
 
       {feedbackNote && (

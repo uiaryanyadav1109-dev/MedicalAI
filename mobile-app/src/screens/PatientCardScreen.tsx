@@ -20,11 +20,13 @@ import {
   Maximize2,
   X,
   CheckCircle,
+  ShieldAlert,
+  ChevronRight,
 } from 'lucide-react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { useAuth } from '../context/AuthContext';
 
-export const PatientCardScreen: React.FC = () => {
+export const PatientCardScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const { patient } = useAuth();
   const [isFlipped, setIsFlipped] = useState(false);
   const [qrModalVisible, setQrModalVisible] = useState(false);
@@ -32,12 +34,13 @@ export const PatientCardScreen: React.FC = () => {
   const allergies = patient?.allergies || [];
   const primaryContact = patient?.emergencyContacts?.[0];
   const patientMrn = patient?.patientId || 'MAI-80429';
-  const qrVerificationPayload = `https://medicalai.app/verify/patient/${patientMrn}`;
+  const qrShareToken = (patient as any)?.qrShareToken || 'mai-mv2p5tyz-v54bjo39wudze3q1';
+  const qrVerificationPayload = `https://medicalai.app/share/${qrShareToken}`;
 
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `Medical AI Digital Health Pass\nName: ${patient?.name || 'Aryan Yadav'}\nMRN: ${patientMrn}\nBlood Type: ${patient?.bloodType || 'O+'}\nAllergies: ${allergies.join(', ') || 'NKDA'}\nVerification: ${qrVerificationPayload}`,
+        message: `Medical AI Digital Health Pass\nName: ${patient?.name || 'Aryan Yadav'}\nMRN: ${patientMrn}\nBlood Type: ${patient?.bloodType || 'O+'}\nAllergies: ${allergies.join(', ') || 'NKDA'}\nSecure Access Verification: ${qrVerificationPayload}`,
         title: 'Institutional Patient Health Card',
       });
     } catch {
@@ -193,6 +196,23 @@ export const PatientCardScreen: React.FC = () => {
           <Text style={styles.toolButtonText}>Flip Side</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Data Access Requests & Patient Consent Button */}
+      <TouchableOpacity
+        style={styles.consentManagementBtn}
+        onPress={() => navigation?.navigate('DataAccessRequests')}
+      >
+        <View style={styles.consentIconWrap}>
+          <ShieldAlert size={20} color="#0D9488" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.consentBtnTitle}>QR Access Requests & Consent</Text>
+          <Text style={styles.consentBtnSubtitle}>
+            Review clinician requests, manage permissions, or revoke active grants
+          </Text>
+        </View>
+        <ChevronRight size={18} color="#0D9488" />
+      </TouchableOpacity>
 
       {/* Security Statement */}
       <View style={styles.securityBox}>
@@ -477,6 +497,36 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '600',
     fontSize: 13,
+  },
+  consentManagementBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#1E293B',
+    padding: 14,
+    borderRadius: 14,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(13, 148, 136, 0.3)',
+  },
+  consentIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(13, 148, 136, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  consentBtnTitle: {
+    color: '#F8FAFC',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  consentBtnSubtitle: {
+    color: '#94A3B8',
+    fontSize: 11,
+    marginTop: 2,
+    lineHeight: 15,
   },
   securityBox: {
     flexDirection: 'row',

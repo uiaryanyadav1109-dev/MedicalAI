@@ -1,6 +1,8 @@
+import 'dotenv/config';
+
 /**
  * Complete Service & Clinical Unit Test Runner
- * Executes all 11 modular test suites with in-memory storage polyfills
+ * Executes all 12 modular test suites with in-memory storage polyfills
  */
 
 // In-Memory Storage Polyfill for Node.js CLI runtime
@@ -27,10 +29,11 @@ import { runMultilingualSpeechTests } from './src/services/__tests__/multilingua
 import { runDashboardAndClinicalTests } from './src/services/__tests__/dashboardAndClinical.test';
 import { runIdentityVerificationTests } from './src/services/__tests__/identityVerification.test';
 import { runGoogleAuthTests } from './src/services/__tests__/googleAuth.test';
+import { runSecureQrAccessWorkflowTests } from './src/services/__tests__/secureQrAccessWorkflow.test';
 
 async function main() {
   console.log('================================================================');
-  console.log('🩺 MEDICAL AI: RUNNING ALL 11 SERVICE & CLINICAL TEST SUITES');
+  console.log('🩺 MEDICAL AI: RUNNING ALL 12 SERVICE & CLINICAL TEST SUITES');
   console.log('================================================================\n');
 
   let grandTotal = 0;
@@ -145,6 +148,14 @@ async function main() {
     });
   } catch (err: any) {
     console.error('❌ Google Auth Suite crashed:', err.message);
+  }
+
+  // 12. Secure QR Access, Mandatory Reason & Patient Consent
+  try {
+    const qrAccessRes = await runSecureQrAccessWorkflowTests();
+    reportSuite('Secure Patient QR Access, Reason & Patient Consent', qrAccessRes);
+  } catch (err: any) {
+    console.error('❌ Secure QR Access Suite crashed:', err.message);
   }
 
   console.log('\n================================================================');

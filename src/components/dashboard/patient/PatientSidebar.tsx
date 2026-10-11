@@ -23,7 +23,8 @@ import {
   CreditCard,
   Users,
   Radio,
-  AlertTriangle
+  AlertTriangle,
+  FileCheck2
 } from 'lucide-react';
 
 interface PatientSidebarProps {
@@ -58,6 +59,7 @@ export const PatientSidebar: React.FC<PatientSidebarProps> = ({
     { labelKey: 'dashboard.triageAssessment', route: '/dashboard/triage', icon: <Compass className="w-4 h-4 text-orange-400" /> },
     { labelKey: 'dashboard.doctorHandoff', route: '/dashboard/doctor-handoff', icon: <Stethoscope className="w-4 h-4 text-cyan-400" /> },
     { labelKey: 'dashboard.shareQr', route: '/dashboard/qr-sharing', icon: <Share2 className="w-4 h-4 text-emerald-400" /> },
+    { labelKey: 'dashboard.dataAccessRequests', route: '/dashboard/data-access-requests', icon: <FileCheck2 className="w-4 h-4 text-emerald-400" /> },
     { labelKey: 'settings.privacy', route: '/dashboard/identity-verification', icon: <ShieldCheck className="w-4 h-4 text-sky-400" /> },
     { labelKey: 'settings.profile', route: '/dashboard/profile', icon: <User className="w-4 h-4 text-violet-400" /> },
     { labelKey: 'settings.title', route: '/dashboard/settings', icon: <Settings className="w-4 h-4 text-blue-400" /> }

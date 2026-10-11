@@ -17,6 +17,7 @@ import { PatientTimelineView } from './views/PatientTimelineView';
 import { PatientTriageView } from './views/PatientTriageView';
 import { PatientDoctorHandoffView } from './views/PatientDoctorHandoffView';
 import { PatientQrSharingView } from './views/PatientQrSharingView';
+import { PatientDataAccessRequestsView } from './views/PatientDataAccessRequestsView';
 import { PatientProfileView } from './views/PatientProfileView';
 import { PatientSettingsView } from './views/PatientSettingsView';
 import { PatientIdentityVerificationView } from './views/PatientIdentityVerificationView';
@@ -115,6 +116,9 @@ export const PatientDashboardPage: React.FC<PatientDashboardPageProps> = ({
 
       case '/dashboard/qr-sharing':
         return <PatientQrSharingView onNavigate={onNavigate} />;
+
+      case '/dashboard/data-access-requests':
+        return <PatientDataAccessRequestsView onNavigate={onNavigate} />;
 
       case '/dashboard/profile':
         return <PatientProfileView onNavigate={onNavigate} />;

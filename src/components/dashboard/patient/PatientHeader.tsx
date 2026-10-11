@@ -59,6 +59,10 @@ export const PatientHeader: React.FC<PatientHeaderProps> = ({
         return t('triage.title');
       case '/dashboard/doctor-handoff':
         return t('handoff.title');
+      case '/dashboard/qr-sharing':
+        return 'Patient Health Pass & QR Controls';
+      case '/dashboard/data-access-requests':
+        return 'Data Access Requests & Consent';
       case '/dashboard/settings':
         return t('settings.title');
       default:

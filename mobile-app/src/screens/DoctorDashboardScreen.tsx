@@ -35,11 +35,12 @@ import {
   Flame,
   Award,
   Layers,
+  ShieldAlert,
 } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../api/apiClient';
 
-type DoctorPortalTab = 'queue' | 'patients' | 'labs' | 'escalations' | 'profile' | 'copilot';
+type DoctorPortalTab = 'queue' | 'patients' | 'labs' | 'escalations' | 'profile' | 'copilot' | 'qr_access';
 
 export const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { doctor, user } = useAuth();
@@ -83,6 +84,114 @@ export const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigatio
 
   // 7. Clinical Analytics Summary
   const [analytics, setAnalytics] = useState<any | null>(null);
+
+  // 8. QR Scan & Patient Access State
+  const [qrInputToken, setQrInputToken] = useState('mai-mv2p5tyz-v54bjo39wudze3q1');
+  const [resolvedTokenInfo, setResolvedTokenInfo] = useState<any | null>(null);
+  const [isResolvingQr, setIsResolvingQr] = useState(false);
+  const [qrReason, setQrReason] = useState<string>('consultation_treatment');
+  const [qrExplanation, setQrExplanation] = useState<string>('');
+  const [qrScopes, setQrScopes] = useState<Record<string, boolean>>({
+    bloodGroup: true,
+    allergies: true,
+    vitals: true,
+    medications: true,
+    emergencyContacts: true,
+    emergencyNotes: true,
+    clinicalNotes: false,
+    labReports: false,
+  });
+  const [qrBreakGlass, setQrBreakGlass] = useState(false);
+  const [isSubmittingQrReq, setIsSubmittingQrReq] = useState(false);
+  const [activeQrRequest, setActiveQrRequest] = useState<any | null>(null);
+  const [releasedPatientData, setReleasedPatientData] = useState<any | null>(null);
+  const [isFetchingReleasedData, setIsFetchingReleasedData] = useState(false);
+
+  const handleResolveQr = async () => {
+    if (!qrInputToken.trim()) {
+      Alert.alert('Required', 'Please enter or scan a valid Patient QR Token.');
+      return;
+    }
+    try {
+      setIsResolvingQr(true);
+      setResolvedTokenInfo(null);
+      setActiveQrRequest(null);
+      setReleasedPatientData(null);
+      const res = await api.qrAccess.resolveToken(qrInputToken.trim());
+      if (res && res.success && res.resolution) {
+        setResolvedTokenInfo(res.resolution);
+      } else {
+        Alert.alert('Resolution Failed', res?.error || 'Invalid or expired QR token.');
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to resolve QR token.');
+    } finally {
+      setIsResolvingQr(false);
+    }
+  };
+
+  const handleSubmitQrRequest = async () => {
+    if (!resolvedTokenInfo) {
+      Alert.alert('Resolve First', 'Please resolve the patient token before requesting access.');
+      return;
+    }
+    if (qrReason === 'other' && !qrExplanation.trim()) {
+      Alert.alert('Explanation Required', 'A clinical explanation is mandatory when selecting "Other legitimate purpose".');
+      return;
+    }
+    if (qrBreakGlass && !qrExplanation.trim()) {
+      Alert.alert('Emergency Justification Required', 'Clinical justification is mandatory for Emergency Break-Glass access.');
+      return;
+    }
+
+    try {
+      setIsSubmittingQrReq(true);
+      const res = await api.qrAccess.submitAccessRequest({
+        token: qrInputToken.trim(),
+        requesterId: doctor?.id || user?.id || 'doc-1',
+        requesterName: doctor?.name || 'Dr. Sarah Chen, MD',
+        requesterRole: 'doctor',
+        requesterEmail: doctor?.email || 's.chen@metrohealth.org',
+        requesterOrganization: 'MetroHealth Clinical Center',
+        reason: qrReason,
+        explanation: qrExplanation.trim(),
+        scopes: qrScopes,
+        isEmergencyBreakGlass: qrBreakGlass,
+      });
+
+      if (res && res.success && res.request) {
+        setActiveQrRequest(res.request);
+        if (res.request.status === 'approved') {
+          Alert.alert('Emergency Access Granted', 'Break-glass granted 30-minute access under emergency protocol.');
+          fetchReleasedScopedData(res.request.id);
+        } else {
+          Alert.alert('Request Submitted', 'Patient consent request was logged. Awaiting patient authenticated approval.');
+        }
+      } else {
+        Alert.alert('Request Error', res?.error || 'Failed to submit access request.');
+      }
+    } catch (err: any) {
+      Alert.alert('Submission Error', err?.message || 'Failed to communicate with authorization server.');
+    } finally {
+      setIsSubmittingQrReq(false);
+    }
+  };
+
+  const fetchReleasedScopedData = async (reqId: string) => {
+    try {
+      setIsFetchingReleasedData(true);
+      const res = await api.qrAccess.fetchScopedData(reqId, doctor?.id || user?.id || 'doc-1');
+      if (res && res.success && res.data) {
+        setReleasedPatientData(res.data);
+      } else {
+        Alert.alert('Access Locked', res?.error || 'Records unavailable. Patient has not approved or access expired.');
+      }
+    } catch (err: any) {
+      Alert.alert('Data Retrieval Error', err?.message || 'Could not fetch protected clinical data.');
+    } finally {
+      setIsFetchingReleasedData(false);
+    }
+  };
 
   const fetchDoctorData = useCallback(async () => {
     try {
@@ -337,6 +446,16 @@ export const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigatio
           <ListOrdered size={14} color={activeTab === 'queue' ? '#0D9488' : '#94A3B8'} />
           <Text style={[styles.tabChipText, activeTab === 'queue' && styles.tabChipTextActive]}>
             Queue ({queue.length})
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tabChip, activeTab === 'qr_access' && styles.tabChipActive]}
+          onPress={() => setActiveTab('qr_access')}
+        >
+          <ShieldAlert size={14} color={activeTab === 'qr_access' ? '#0D9488' : '#94A3B8'} />
+          <Text style={[styles.tabChipText, activeTab === 'qr_access' && styles.tabChipTextActive]}>
+            Scan Patient QR
           </Text>
         </TouchableOpacity>
 
@@ -836,6 +955,303 @@ export const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigatio
                 </View>
               )}
             </View>
+          </View>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB 7: SCAN PATIENT QR & CLINICAL ACCESS */}
+        {/* ========================================================================= */}
+        {activeTab === 'qr_access' && (
+          <View style={styles.section}>
+            {/* Step 1: Scan / Enter Token Card */}
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <View style={styles.avatarMini}>
+                  <ShieldAlert size={16} color="#0D9488" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cardTitle}>Institutional Patient QR Scanner</Text>
+                  <Text style={styles.cardMeta}>Zero-Trust Clinical Access Gate</Text>
+                </View>
+              </View>
+
+              <Text style={[styles.subhead, { marginTop: 8 }]}>
+                Scan with handheld scanner or enter cryptographic token from patient digital pass:
+              </Text>
+
+              <TextInput
+                style={[styles.modalInput, { marginTop: 8 }]}
+                placeholder="e.g. mai-mv2p5tyz-v54bjo39wudze3q1"
+                placeholderTextColor="#64748B"
+                value={qrInputToken}
+                onChangeText={setQrInputToken}
+                autoCapitalize="none"
+              />
+
+              <View style={[styles.btnRow, { marginTop: 10 }]}>
+                <TouchableOpacity
+                  style={styles.actionBtnOutline}
+                  onPress={() => setQrInputToken('mai-mv2p5tyz-v54bjo39wudze3q1')}
+                >
+                  <Text style={styles.actionBtnOutlineText}>Fill Demo Token</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.actionBtnSolid}
+                  onPress={handleResolveQr}
+                  disabled={isResolvingQr}
+                >
+                  {isResolvingQr ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <CheckCircle2 size={14} color="#FFFFFF" />
+                      <Text style={styles.actionBtnSolidText}>Resolve Token</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Step 2: Minimal Zero-Trust Preview */}
+            {resolvedTokenInfo && (
+              <View style={[styles.card, { borderColor: '#0D9488' }]}>
+                <View style={styles.cardHeader}>
+                  <View style={[styles.avatarMini, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                    <ShieldCheck size={16} color="#10B981" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cardTitle}>Token Verified: {resolvedTokenInfo.patientIdCode}</Text>
+                    <Text style={styles.cardMeta}>
+                      Masked Identity: {resolvedTokenInfo.maskedPatientName} • {resolvedTokenInfo.institutionName}
+                    </Text>
+                  </View>
+                  <View style={styles.acuityPrompt}>
+                    <Text style={styles.acuityText}>LOCKED</Text>
+                  </View>
+                </View>
+
+                <Text style={[styles.chiefComplaint, { color: '#94A3B8', marginTop: 8 }]}>
+                  Protected health records are hidden. You must supply a valid clinical purpose and obtain patient authorization before records are released.
+                </Text>
+
+                {/* Reason Selection */}
+                <Text style={[styles.inputLabel, { marginTop: 12 }]}>Mandatory Purpose for Access</Text>
+                <View style={[styles.filterRow, { flexWrap: 'wrap' }]}>
+                  {[
+                    { key: 'consultation_treatment', label: 'Consultation & Treatment' },
+                    { key: 'emergency_assistance', label: 'Emergency Assistance' },
+                    { key: 'admission_assessment', label: 'Hospital Admission' },
+                    { key: 'followup_care', label: 'Follow-up Care' },
+                    { key: 'other', label: 'Other Legitimate Purpose' },
+                  ].map((r) => (
+                    <TouchableOpacity
+                      key={r.key}
+                      style={[styles.filterPill, qrReason === r.key && styles.filterPillActive]}
+                      onPress={() => setQrReason(r.key)}
+                    >
+                      <Text style={[styles.filterPillText, qrReason === r.key && styles.filterPillTextActive]}>
+                        {r.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {/* Additional Explanation */}
+                <Text style={[styles.inputLabel, { marginTop: 10 }]}>
+                  Additional Clinical Explanation {qrReason === 'other' || qrBreakGlass ? '(Required)' : '(Optional)'}
+                </Text>
+                <TextInput
+                  style={[styles.modalInput, { minHeight: 60 }]}
+                  placeholder="Detail clinical rationale for chart review..."
+                  placeholderTextColor="#64748B"
+                  value={qrExplanation}
+                  onChangeText={setQrExplanation}
+                  multiline
+                />
+
+                {/* Scope Selection */}
+                <Text style={[styles.inputLabel, { marginTop: 10 }]}>Requested Data Categories</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginVertical: 6 }}>
+                  {Object.keys(qrScopes).map((scopeKey) => {
+                    const isChecked = qrScopes[scopeKey];
+                    return (
+                      <TouchableOpacity
+                        key={scopeKey}
+                        style={[
+                          styles.filterPill,
+                          isChecked && { backgroundColor: 'rgba(13, 148, 136, 0.25)', borderColor: '#0D9488' },
+                        ]}
+                        onPress={() => setQrScopes((prev) => ({ ...prev, [scopeKey]: !prev[scopeKey] }))}
+                      >
+                        <Text style={[styles.filterPillText, isChecked && { color: '#0D9488' }]}>
+                          {scopeKey.toUpperCase()} {isChecked ? '✓' : ''}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* Emergency Break-Glass Toggle */}
+                <TouchableOpacity
+                  style={[
+                    styles.modePill,
+                    { marginTop: 10, paddingVertical: 10 },
+                    qrBreakGlass && { backgroundColor: 'rgba(239, 68, 68, 0.2)', borderColor: '#EF4444' },
+                  ]}
+                  onPress={() => setQrBreakGlass(!qrBreakGlass)}
+                >
+                  <AlertTriangle size={16} color={qrBreakGlass ? '#EF4444' : '#94A3B8'} />
+                  <Text style={[styles.modeText, qrBreakGlass && { color: '#EF4444', fontWeight: '800' }]}>
+                    {qrBreakGlass ? 'Emergency Break-Glass Mode Engaged' : 'Toggle Emergency Break-Glass Pathway'}
+                  </Text>
+                </TouchableOpacity>
+
+                {qrBreakGlass && (
+                  <Text style={[styles.overrideAlertText, { marginTop: 6 }]}>
+                    Break-Glass grants immediate 30-minute access for urgent clinical distress. This event is recorded permanently in the audit trail and alerted to patient safety monitors.
+                  </Text>
+                )}
+
+                {/* Submit Request Button */}
+                <TouchableOpacity
+                  style={[styles.submitBtn, { marginTop: 14 }]}
+                  onPress={handleSubmitQrRequest}
+                  disabled={isSubmittingQrReq}
+                >
+                  {isSubmittingQrReq ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.submitBtnText}>
+                      {qrBreakGlass ? 'Invoke Emergency Break-Glass Access' : 'Request Patient Consent'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Step 3: Active Request Status Tracker */}
+            {activeQrRequest && (
+              <View style={[styles.card, { borderColor: activeQrRequest.status === 'approved' ? '#10B981' : '#EAB308' }]}>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.cardTitle}>Request ID: {activeQrRequest.id}</Text>
+                  <View
+                    style={[
+                      styles.acuityBadge,
+                      activeQrRequest.status === 'approved' ? styles.acuityRoutine : styles.acuityPrompt,
+                    ]}
+                  >
+                    <Text style={styles.acuityText}>{activeQrRequest.status.toUpperCase()}</Text>
+                  </View>
+                </View>
+
+                <Text style={[styles.cardMeta, { marginTop: 4 }]}>
+                  Reason: {activeQrRequest.reasonLabel || activeQrRequest.reason}
+                </Text>
+
+                {activeQrRequest.status === 'pending' && (
+                  <View style={{ marginTop: 12 }}>
+                    <Text style={{ color: '#EAB308', fontSize: 12, marginBottom: 8 }}>
+                      Awaiting patient consent on mobile device or patient dashboard.
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.actionBtnOutline}
+                      onPress={async () => {
+                        const checkRes = await api.qrAccess.getRequestsForRequester(doctor?.id || 'doc-1');
+                        if (checkRes && checkRes.success) {
+                          const updated = checkRes.requests.find((r: any) => r.id === activeQrRequest.id);
+                          if (updated) {
+                            setActiveQrRequest(updated);
+                            if (updated.status === 'approved') {
+                              fetchReleasedScopedData(updated.id);
+                            }
+                          }
+                        }
+                      }}
+                    >
+                      <RotateCcw size={14} color="#38BDF8" />
+                      <Text style={styles.actionBtnOutlineText}>Refresh Consent Status</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {activeQrRequest.status === 'approved' && !releasedPatientData && (
+                  <TouchableOpacity
+                    style={[styles.actionBtnSolid, { marginTop: 10 }]}
+                    onPress={() => fetchReleasedScopedData(activeQrRequest.id)}
+                    disabled={isFetchingReleasedData}
+                  >
+                    <FileText size={14} color="#FFFFFF" />
+                    <Text style={styles.actionBtnSolidText}>Load Released Scoped Records</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+
+            {/* Step 4: Released Scoped Records Display */}
+            {releasedPatientData && (
+              <View style={[styles.chartContainer, { marginTop: 6 }]}>
+                <View style={styles.chartHeader}>
+                  <Text style={styles.chartPatientName}>{releasedPatientData.patientName || 'Aryan Yadav'}</Text>
+                  <Text style={styles.chartPatientMeta}>
+                    MRN: {releasedPatientData.mrn} • Released via Verified Scope
+                  </Text>
+                </View>
+
+                {releasedPatientData.bloodGroup && (
+                  <View style={styles.card}>
+                    <Text style={styles.inputLabel}>Blood Group</Text>
+                    <Text style={{ color: '#F8FAFC', fontSize: 16, fontWeight: '800' }}>
+                      {releasedPatientData.bloodGroup}
+                    </Text>
+                  </View>
+                )}
+
+                {releasedPatientData.allergies && (
+                  <View style={styles.card}>
+                    <Text style={styles.inputLabel}>Allergies</Text>
+                    <Text style={{ color: '#F87171', fontSize: 14, fontWeight: '700' }}>
+                      {Array.isArray(releasedPatientData.allergies)
+                        ? releasedPatientData.allergies.join(', ')
+                        : 'None Known'}
+                    </Text>
+                  </View>
+                )}
+
+                {releasedPatientData.vitals && Array.isArray(releasedPatientData.vitals) && (
+                  <View style={styles.card}>
+                    <Text style={styles.inputLabel}>Recent Vitals</Text>
+                    {releasedPatientData.vitals.slice(0, 3).map((v: any, idx: number) => (
+                      <Text key={idx} style={{ color: '#94A3B8', fontSize: 12, marginTop: 2 }}>
+                        {v.type}: {v.value} {v.unit}
+                      </Text>
+                    ))}
+                  </View>
+                )}
+
+                {releasedPatientData.medications && Array.isArray(releasedPatientData.medications) && (
+                  <View style={styles.card}>
+                    <Text style={styles.inputLabel}>Active Medications</Text>
+                    {releasedPatientData.medications.slice(0, 3).map((m: any, idx: number) => (
+                      <Text key={idx} style={{ color: '#38BDF8', fontSize: 12, marginTop: 2 }}>
+                        • {m.name} ({m.dosage || m.strength})
+                      </Text>
+                    ))}
+                  </View>
+                )}
+
+                {releasedPatientData.emergencyContacts && Array.isArray(releasedPatientData.emergencyContacts) && (
+                  <View style={styles.card}>
+                    <Text style={styles.inputLabel}>Emergency Contacts</Text>
+                    {releasedPatientData.emergencyContacts.map((c: any, idx: number) => (
+                      <Text key={idx} style={{ color: '#F8FAFC', fontSize: 12, marginTop: 2 }}>
+                        {c.name} ({c.relationship}) - {c.phone}
+                      </Text>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
           </View>
         )}
       </ScrollView>

@@ -13,6 +13,8 @@ import { Footer } from './components/layout/Footer';
 import { MedicalDisclaimerBanner } from './components/layout/MedicalDisclaimerBanner';
 import { AssessmentDemoModal } from './components/interactive/AssessmentDemoModal';
 import { DownloadAppModal } from './components/interactive/DownloadAppModal';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { Stethoscope } from 'lucide-react';
 
 // Dedicated Protected Dashboards
 import { PatientDashboardPage } from './components/dashboard/patient/PatientDashboardPage';
@@ -50,7 +52,7 @@ import { EmergencySosCountdownModal } from './components/interactive/EmergencySo
 import { sosManager } from './services/sosManager';
 
 function AppContent() {
-  const { isAuthenticated, role, user, logout } = useAuth();
+  const { isAuthenticated, role, user, logout, loginAsDemo } = useAuth();
   const [currentRoute, setCurrentRoute] = useState<RoutePath>(() => {
     try {
       const p = window.location.pathname;
@@ -110,6 +112,7 @@ function AppContent() {
     '/dashboard/triage',
     '/dashboard/doctor-handoff',
     '/dashboard/qr-sharing',
+    '/dashboard/data-access-requests',
     '/dashboard/profile',
     '/dashboard/settings',
     // Doctor Dashboard routes
@@ -123,10 +126,15 @@ function AppContent() {
     '/doctor/settings'
   ];
 
-  const navigateTo = (route: RoutePath) => {
+  const navigateTo = (route: RoutePath, replace = false) => {
+    if (route === currentRoute) return;
     setCurrentRoute(route);
     try {
-      window.history.pushState({}, '', route);
+      if (replace) {
+        window.history.replaceState({}, '', route);
+      } else {
+        window.history.pushState({}, '', route);
+      }
     } catch {
       // safe fallback if sandbox disallows pushState
     }
@@ -137,15 +145,20 @@ function AppContent() {
   useEffect(() => {
     if (currentRoute === '/chat') {
       if (isAuthenticated) {
-        navigateTo('/dashboard/chat');
+        navigateTo('/dashboard/chat', true);
       } else {
-        navigateTo('/login');
+        navigateTo('/login', true);
       }
     } else if (
       (currentRoute.startsWith('/dashboard') || currentRoute.startsWith('/doctor')) &&
       !isAuthenticated
     ) {
-      navigateTo('/login');
+      try {
+        sessionStorage.setItem('medical_ai_intended_route', currentRoute);
+      } catch {
+        // storage quota safety
+      }
+      navigateTo('/login', true);
     }
   }, [currentRoute, isAuthenticated]);
 
@@ -236,8 +249,18 @@ function AppContent() {
               </p>
               <div className="pt-2 flex flex-col gap-2.5">
                 <button
+                  onClick={() => {
+                    loginAsDemo('doctor');
+                    navigateTo('/doctor');
+                  }}
+                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors flex items-center justify-center gap-2"
+                >
+                  <Stethoscope className="w-4 h-4" />
+                  <span>Enter Clinician Portal (Dr. Sarah Chen, MD)</span>
+                </button>
+                <button
                   onClick={() => navigateTo('/dashboard')}
-                  className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors"
+                  className="w-full py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-medium transition-colors"
                 >
                   Return to Patient Portal
                 </button>
@@ -246,9 +269,9 @@ function AppContent() {
                     logout();
                     navigateTo('/login');
                   }}
-                  className="w-full py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-medium transition-colors"
+                  className="w-full py-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-[11px] font-medium transition-colors"
                 >
-                  Sign Out & Log In as Clinician
+                  Sign Out & Log In with Custom Credentials
                 </button>
               </div>
             </div>
@@ -257,10 +280,12 @@ function AppContent() {
       }
 
       return (
-        <DoctorDashboardPage
-          currentRoute={currentRoute}
-          onNavigate={navigateTo}
-        />
+        <ErrorBoundary fallbackTitle="Doctor Portal Dashboard Error">
+          <DoctorDashboardPage
+            currentRoute={currentRoute}
+            onNavigate={navigateTo}
+          />
+        </ErrorBoundary>
       );
     }
 
@@ -458,7 +483,9 @@ function AppContent() {
         isOpen={isDownloadModalOpen}
         onClose={() => setIsDownloadModalOpen(false)}
       />
-      {renderContent()}
+      <ErrorBoundary fallbackTitle="Medical AI Application Guard">
+        {renderContent()}
+      </ErrorBoundary>
     </>
   );
 }
