@@ -605,8 +605,33 @@ export function createChatApiRouter() {
   router.use('/identity', createIdentityApiRouter());
 
   // Network host discovery endpoint for real scannable QR codes
-  router.get('/network/host', (_req, res) => {
+  router.get('/network/host', (req, res) => {
     try {
+      // 1. If explicit APP_URL exists and is public
+      if (process.env.APP_URL && !process.env.APP_URL.includes('localhost')) {
+        const cleanAppUrl = process.env.APP_URL.replace(/\/$/, '');
+        return res.json({
+          host: cleanAppUrl,
+          port: '',
+          origin: cleanAppUrl,
+          isDetected: true
+        });
+      }
+
+      // 2. Check for public incoming request host (Render, reverse proxy, domain)
+      const rawProto = req.get('x-forwarded-proto') || (req.secure ? 'https' : 'http');
+      const forwardedProto = rawProto.split(',')[0].trim();
+      const reqHost = req.get('x-forwarded-host') || req.get('host');
+      if (reqHost && !reqHost.includes('localhost') && !reqHost.includes('127.0.0.1') && !reqHost.includes('0.0.0.0')) {
+        const publicOrigin = `${forwardedProto}://${reqHost}`;
+        return res.json({
+          host: reqHost,
+          port: '',
+          origin: publicOrigin,
+          isDetected: true
+        });
+      }
+
       const ifaces = os.networkInterfaces();
       let detectedIp = '';
 
@@ -621,9 +646,9 @@ export function createChatApiRouter() {
         if (detectedIp) break;
       }
 
-      const host = detectedIp || process.env.VITE_PUBLIC_HOST || '10.149.6.231';
+      const host = detectedIp || process.env.VITE_PUBLIC_HOST || 'localhost';
       const port = process.env.PORT || '3000';
-      const origin = `http://${host}:${port}`;
+      const origin = host === 'localhost' ? `http://localhost:${port}` : `http://${host}:${port}`;
 
       res.json({
         host,
@@ -633,9 +658,9 @@ export function createChatApiRouter() {
       });
     } catch (err: any) {
       res.json({
-        host: '10.149.6.231',
+        host: 'localhost',
         port: '3000',
-        origin: 'http://10.149.6.231:3000',
+        origin: 'http://localhost:3000',
         error: err?.message
       });
     }
