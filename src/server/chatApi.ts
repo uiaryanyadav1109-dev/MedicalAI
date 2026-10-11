@@ -13,24 +13,33 @@
  */
 
 import express from 'express';
+import os from 'os';
 import dotenv from 'dotenv';
 import { createEmergencyApiRouter } from './emergencyApi';
 import { createClinicalApiRouter } from './clinicalApi';
 import { createAuthApiRouter } from './authApi';
 import { createIdentityApiRouter } from './identityApi';
+import {
+  getModelRegistry,
+  getDefaultModelId,
+  dispatchModelStream,
+  SUPPORTED_MODELS
+} from './modelRegistry';
 
 // Ensure environment variables are loaded
 dotenv.config();
 
 const CANDIDATE_MODELS = [
-  'gemini-flash-latest',
-  'gemini-3.7-flash',
-  'gemini-3.5-flash',
-  'gemini-3.1-flash-lite',
-  'gemini-flash-lite-latest',
-  'gemini-pro-latest',
-  'gemini-3.8-flash'
+  'gemini-3.8-flash',
+  'gemini-2.5-flash',
+  'gemini-2.0-flash-exp',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash-8b',
+  'gemini-1.5-flash',
+  'gemini-3.1-pro-preview',
+  'gemini-2.5-pro'
 ];
+
 
 /**
  * Splits text into streamable token chunks for smooth SSE delivery
@@ -82,11 +91,10 @@ function generateClinicalReferenceFallback(
     }
   }
 
-  // 2. High Fever, Cold, Flu, Cough, Chills, Upper Respiratory Infections (Direct Clinical Triage)
+  // 2. High Fever, Cold, Flu, Cough, Chills, Upper Respiratory Infections
   if (
     q.includes('fever') ||
     q.includes('cold') ||
-    q.includes('cough') ||
     q.includes('flu') ||
     q.includes('chills') ||
     q.includes('sore throat') ||
@@ -98,7 +106,7 @@ function generateClinicalReferenceFallback(
     if (lang === 'hi' || lang === 'hindi') {
       return `### 🌡️ तेज बुखार और जुकाम के लिए क्लिनिकल ट्राइएज एवं प्राथमिक देखभाल (Clinical Guidance)
 
-**आपके द्वारा बताए गए लक्षण:** पिछले 2 दिनों से तेज बुखार और जुकाम।
+**आपके द्वारा बताए गए लक्षण:** बुखार और जुकाम के लक्षण।
 
 ---
 
@@ -108,140 +116,354 @@ function generateClinicalReferenceFallback(
   - यदि बुखार **102°F (38.9°C)** से अधिक हो, तो माथे, गर्दन और कलाइयों पर सामान्य (गुनगुने/ताजे) पानी की ठंडी पट्टियां रखें। *कभी भी बर्फ का पानी इस्तेमाल न करें।*
 - **बुखार नियंत्रण की दवा (Antipyretic Medication):**
   - **पैरासिटामोल (Paracetamol / Acetaminophen):** वयस्कों के लिए 500mg या 650mg भोजन के बाद आवश्यकतानुसार 6 घंटे के अंतराल पर (24 घंटे में अधिकतम 3,000mg से अधिक न लें)।
-  - *सावधानी:* यदि लिवर या किडनी की पुरानी समस्या है, तो डॉक्टर से सलाह लेकर ही दवा लें।
-  - *बच्चों/किशोरों को एस्पिरिन (Aspirin) कदापि न दें।*
+  - *सावधानी:* यदि लिवर या किडनी की पुरानी समस्या है, तो डॉक्टर से सलाह लेकर ही दवा लें। *बच्चों/किशोरों को एस्पिरिन (Aspirin) कदापि न दें।*
 - **हाइड्रेशन और इलेक्ट्रोलाइट्स (Hydration):**
-  - दिन में 2.5 से 3 लीटर तरल पदार्थ पिएं (गुनगुना पानी, ओआरएस, दाल का पानी, सूप)। बुखार में पसीने के कारण शरीर में पानी की कमी हो जाती है।
+  - दिन में 2.5 से 3 लीटर तरल पदार्थ पिएं (गुनगुना पानी, ओआरएस, दाल का पानी, सूप)।
 - **जुकाम और गले के लिए आराम:**
   - दिन में 2-3 बार गर्म पानी में नमक डालकर गरारे करें।
-  - सादे पानी की भाप (Steam Inhalation) लें जिससे बंद नाक और साइनस का दबाव कम हो।
+  - सादे पानी की भाप (Steam Inhalation) लें।
   - पर्याप्त आराम (Complete Bed Rest) करें।
 
 ---
 
-### 2. संभावित कारण (Possible Causes):
-- **वायरल फ्लू / इन्फ्लूएंजा (Influenza A/B):** तेज बुखार, बदन दर्द और थकान।
-- **वायरल ऊपरी श्वसन संक्रमण (Common Cold / URI):** नाक बहना, छींकें, हल्का बदन दर्द।
-- **कोविड-19 या बैक्टीरियल संक्रमण (Sinusitis / Tonsillitis):** यदि गले में अत्यधिक खराश या बलगम का रंग गहरा हो।
-
----
-
-### 🚨 3. आपातकालीन लाल चेतावनी संकेत (Red Flags - तुरंत अस्पताल / डॉक्टर के पास जाएं):
-यदि निम्नलिखित में से कोई भी गंभीर लक्षण दिखाई दे तो बिना देर किए आपातकालीन चिकित्सा सहायता लें:
-1. **सांस लेने में तकलीफ:** सांस फूलना, सीने में तेज दर्द या घरघराहट।
+### 🚨 2. आपातकालीन लाल चेतावनी संकेत (Red Flags - तुरंत डॉक्टर के पास जाएं):
+1. **सांस लेने में तकलीफ:** सांस फूलना, सीने में दर्द या घरघराहट।
 2. **अत्यधिक तेज बुखार:** बुखार **103°F (39.4°C)** से ऊपर बना रहे और दवा से न उतरे।
-3. **गर्दन में अकड़न:** गर्दन झुकाने में असमर्थता, तेज सिरदर्द, या प्रकाश से परेशानी (Photophobia)।
-4. **उल्टी और निर्जलीकरण:** कुछ भी खाने-पीने पर लगातार उल्टी होना या पेशाब बहुत कम आना।
-5. **अवधि:** बुखार **3 दिन (72 घंटे)** से अधिक समय तक लगातार बना रहे।
-
-> ⚠️ **महत्वपूर्ण सूचना:** यह मार्गदर्शन प्रारंभिक ट्राइएज सहायता के लिए है। लक्षणों की पुष्टि और एंटीबायोटिक/एंटीवायरल की आवश्यकता के लिए कृपया डॉक्टर से परामर्श लें।
+3. **गर्दन में अकड़न:** गर्दन झुकाने में असमर्थता या तेज सिरदर्द।
+4. **अवधि:** बुखार **3 दिन (72 घंटे)** से अधिक समय तक लगातार बना रहे।
 
 *(क्लीनिकल ट्राइएज एवं इन्फेक्शियस डिजीज दिशानिर्देशों पर आधारित)*`;
     }
 
     return `### 🌡️ Clinical Triage & Guidance: High Fever & Common Cold / Flu
 
-**Reported Symptoms:** High fever and cold symptoms persisting for the past 2 days.
+**Reported Symptoms:** Fever and cold symptoms.
 
 ---
 
 ### 1. Immediate Clinical Management & Symptomatic Relief
-
 1. **Monitor Body Temperature Accurately:**
    - Measure temperature with a digital oral or tympanic thermometer every 4 to 6 hours.
-   - Clinical classification:
-     - *Low-grade:* 99.5°F – 100.9°F (37.5°C – 38.3°C)
-     - *Moderate:* 101.0°F – 102.9°F (38.3°C – 39.4°C)
-     - *High fever:* ≥ 103.0°F (39.4°C)
-   - If temperature exceeds **102°F**, apply lukewarm (not cold or icy) damp compresses to the forehead, back of the neck, and wrists.
-
+   - If temperature exceeds **102°F (38.9°C)**, apply lukewarm damp compresses to the forehead, back of the neck, and wrists.
 2. **Antipyretic (Fever-Reducing) Protocol:**
    - **Acetaminophen / Paracetamol (First-line):** 500 mg to 650 mg orally every 4 to 6 hours as needed (do not exceed 3,000 mg in 24 hours).
-     - *Safety Alert:* Check labels on OTC multi-symptom cold medications to ensure you are not doubling up on acetaminophen. Avoid alcohol.
-   - **Ibuprofen (Alternative / Adjunct):** 200 mg to 400 mg orally every 6 to 8 hours taken with food (contraindicated in active gastritis, peptic ulcers, chronic kidney disease, or severe dehydration).
-   - ⚠️ *Never give Aspirin to children or young adults* due to the risk of Reye's syndrome.
-
+   - **Ibuprofen (Alternative / Adjunct):** 200 mg to 400 mg orally every 6 to 8 hours taken with food (contraindicated in active gastritis, peptic ulcers, or renal impairment).
+   - ⚠️ *Never give Aspirin to children or teenagers* due to the risk of Reye's syndrome.
 3. **Active Hydration & Decongestion:**
-   - Drink 2.5 to 3 liters of fluids daily (Oral Rehydration Salts, warm clear broths, herbal teas, electrolyte water) to prevent fever-induced dehydration.
-   - Perform steam inhalation twice daily and use normal saline nasal spray/rinse to clear congested nasal passages.
-   - Gargle with warm salt water (1/2 teaspoon salt in 1 glass of warm water) 3 times daily for pharyngeal irritation.
-   - Strict physical bed rest to support cell-mediated immune defense.
+   - Drink 2.5 to 3 liters of fluids daily (Oral Rehydration Salts, warm clear broths, herbal teas).
+   - Perform steam inhalation twice daily and use normal saline nasal spray for congestion.
+   - Gargle with warm salt water (1/2 teaspoon salt in 1 glass of warm water) 3 times daily.
+   - Strict physical bed rest to support immune recovery.
 
 ---
 
-### 2. Differential Etiologies to Consider
-- **Acute Viral Upper Respiratory Infection (Common Cold):** Rhinovirus, Adenovirus, Coronavirus.
-- **Influenza (Flu A / B):** Characterized by abrupt onset of high fever, severe myalgias (muscle aches), headaches, and fatigue.
-- **COVID-19:** Presents with fever, cough, potential loss of taste/smell, and body aches.
-- **Secondary Bacterial Infection:** Such as acute purulent bacterial rhinosinusitis or tonsillitis.
-
----
-
-### 🚨 3. RED FLAG WARNING SIGNS — When to Seek Immediate Emergency Care
-Go immediately to an Urgent Care or Emergency Department if you observe any of the following:
-- **Respiratory Compromise:** Shortness of breath, rapid labored breathing, wheezing, or chest pressure/pain.
-- **Neurological Distress:** Severe stiff neck (inability to touch chin to chest), confusion, altered mental status, or persistent extreme photophobia.
+### 🚨 2. RED FLAG WARNING SIGNS — When to Seek Immediate Emergency Care
+- **Respiratory Compromise:** Shortness of breath, rapid labored breathing, or chest pressure.
+- **Neurological Distress:** Severe stiff neck (inability to touch chin to chest), confusion, or persistent extreme photophobia.
 - **Unresponsive Fever:** Fever persisting at **≥ 103°F (39.4°C)** that fails to drop after antipyretic administration.
-- **Severe Dehydration:** Inability to keep fluids down due to persistent vomiting, profound dizziness upon standing, or scant dark urine.
-- **Prolonged Course:** Fever continuing beyond **3 full days (72 hours)** without downward resolution.
-
-> ℹ️ *Clinical Correlation Advisory: This preliminary triage assessment is designed for informational assistance. If symptoms worsen or persist beyond 72 hours, consult your attending physician for in-person evaluation.*
+- **Prolonged Course:** Fever continuing beyond **3 full days (72 hours)** without resolution.
 
 *(Grounded in Clinical Practice Guidelines for Acute Respiratory Infections)*`;
   }
 
   // 3. Headache, Migraine, and Neurological Queries
-  if (q.includes('headache') || q.includes('migraine') || q.includes('sir dard') || q.includes('head pain')) {
-    return `### 🧠 Clinical Guidance: Headache & Migraine Triage
+  if (q.includes('headache') || q.includes('migraine') || q.includes('sir dard') || q.includes('head pain') || q.includes('dizziness') || q.includes('vertigo')) {
+    return `### 🧠 Clinical Guidance: Headache & Neurological Triage
 
-**Immediate Symptomatic Steps:**
-1. **Rest in a Low-Stimulus Environment:** Rest in a dark, quiet, well-ventilated room.
-2. **Hydration:** Dehydration is a frequent primary trigger; drink 500–750 mL of water immediately.
-3. **Analgesic Options:** Acetaminophen (500–1000 mg) or Ibuprofen (400 mg with food) taken early at onset. For diagnosed migraines, consult your doctor regarding prescribed triptans.
-4. **Cold / Warm Compress:** Apply a cool compress to forehead or warm compress to the back of the neck to relieve tension.
+**Reported Symptoms:** Cephalea / Headache or Cranial Discomfort.
 
-🚨 **Red Flag Warning (Seek Immediate Emergency Care):**
-- Sudden onset "thunderclap" headache (reaching maximum intensity within seconds).
-- Headache accompanied by fever, stiff neck, confusion, seizure, or focal neurological deficits (weakness, numbness, speech difficulty).
-- New headache following head trauma or in individuals over 50 years of age.
+---
 
-*(Clinical Neurology Triage Protocol)*`;
+### 1. Clinical Assessment & Immediate Steps
+1. **Low-Stimulus Environment:** Rest in a darkened, quiet, temperature-controlled room with minimal screen exposure.
+2. **Hydration & Electrolytes:** Dehydration is one of the most common acute triggers; consume 500–750 mL of water or electrolyte solution immediately.
+3. **Analgesic Options:**
+   - **Acetaminophen / Paracetamol:** 500–1,000 mg orally at onset.
+   - **Ibuprofen / Naproxen:** 400 mg with food if tension or inflammatory etiology is suspected.
+   - *For diagnosed Migraines:* Prescribed triptans (e.g. Sumatriptan) should be taken as directed by your physician at earliest symptom onset.
+4. **Thermal Therapy:** Apply a cold compress across the forehead or temples (for migraines) or a warm compress across the posterior neck (for tension headaches).
+
+---
+
+### 🚨 2. Red Flag Warnings (Seek Immediate Emergency Care)
+- **"Thunderclap" Headache:** Sudden, blinding onset reaching maximum severity within 60 seconds (requires immediate rule-out of subarachnoid hemorrhage).
+- **Systemic Symptoms:** Headache accompanied by high fever, neck stiffness, confusion, seizure, or rash.
+- **Focal Neurological Deficits:** New facial droop, unilateral limb weakness, numbness, or slurred speech (FAST stroke criteria).
+- **Head Injury:** Any worsening headache following head trauma.
+
+*(Clinical Neurology Practice Guidelines)*`;
   }
 
   // 4. Chest Pain, Cardiac, Palpitations, Shortness of Breath (High-Acuity Triage)
-  if (q.includes('chest pain') || q.includes('chest tightness') || q.includes('heart attack') || q.includes('palpitation') || q.includes('shortness of breath') || q.includes('breathless')) {
+  if (q.includes('chest pain') || q.includes('chest tightness') || q.includes('heart attack') || q.includes('palpitation') || q.includes('shortness of breath') || q.includes('breathless') || q.includes('seene me dard')) {
     return `### 🚨 URGENT CLINICAL TRIAGE: Chest Pain / Shortness of Breath
 
-> ⚠️ **IMMEDIATE EMERGENCY WARNING:** If you are experiencing central crushing chest pain, pressure, radiating pain to the left arm/jaw/back, sudden shortness of breath, cold sweating, or dizziness, **CALL EMERGENCY SERVICES (112 / 108) IMMEDIATELY.** Do not attempt to drive yourself.
+> ⚠️ **IMMEDIATE EMERGENCY ALERT:** If you or the patient are experiencing central crushing chest pressure, tightness, squeezing, pain radiating to the left arm, shoulder, jaw, neck, or back, alongside cold sweats, lightheadedness, or acute breathlessness, **CALL EMERGENCY MEDICAL SERVICES (112 / 108 / 911) IMMEDIATELY.**
 
-**Preliminary Emergency First-Aid Measures While Awaiting EMS:**
-1. **Cease All Physical Exertion:** Sit upright in a comfortable position (semi-Fowler's position) to reduce cardiac workload.
-2. **Loosen Tight Clothing:** Ensure unhindered respiratory movement.
-3. **Aspirin Consideration:** If advised by emergency dispatchers and in the absence of allergies or active internal bleeding, chewing a single uncoated Aspirin (325 mg) can be beneficial in suspected acute coronary syndrome.
-4. **Remain Calm & Do Not Take Unprescribed Medication:** Await professional emergency personnel.
+---
 
-*(Emergency Cardiovascular Triage Protocol)*`;
+### 1. Immediate First-Aid Protocol While Emergency Services En Route
+1. **Cease All Physical Activity:** Sit down immediately in a semi-upright position (semi-Fowler's position) with back supported to minimize myocardial oxygen demand.
+2. **Loosen Restrictive Clothing:** Unbutton tight collars, belts, and ties to assist unlabored ventilation.
+3. **Aspirin Protocol:** If advised by emergency dispatchers and in the absence of aspirin allergy or active internal bleeding, chew a single adult Aspirin (300–325 mg) for antiplatelet effect.
+4. **Do Not Drive Yourself:** Wait for an ambulance equipped with paramedic telemetry and defibrillator capabilities.
+
+*(Emergency Cardiovascular Care Triage Protocol)*`;
   }
 
-  // 5. Abdominal Pain, Nausea, Vomiting, Diarrhea, Stomach Cramps
-  if (q.includes('stomach') || q.includes('abdomen') || q.includes('vomit') || q.includes('diarrhea') || q.includes('nausea') || q.includes('loose motion') || q.includes('pet dard')) {
+  // 5. Abdominal Pain, Acidity, Gastritis, GERD, Nausea, Vomiting, Diarrhea, Food Poisoning, Constipation
+  if (
+    q.includes('stomach') ||
+    q.includes('abdomen') ||
+    q.includes('vomit') ||
+    q.includes('diarrhea') ||
+    q.includes('nausea') ||
+    q.includes('loose motion') ||
+    q.includes('pet dard') ||
+    q.includes('acidity') ||
+    q.includes('gerd') ||
+    q.includes('acid reflux') ||
+    q.includes('heartburn') ||
+    q.includes('gas') ||
+    q.includes('bloating') ||
+    q.includes('indigestion') ||
+    q.includes('constipation')
+  ) {
     return `### 🩺 Clinical Triage: Gastrointestinal Symptoms & Abdominal Discomfort
 
-**Symptomatic Management:**
-1. **Oral Rehydration Therapy (Vital):** Drink small, frequent sips of Oral Rehydration Salts (ORS) or electrolyte water to prevent hypovolemia.
-2. **Dietary Modification:** Follow the BRAT regimen (Bananas, Rice, Applesauce, Toast) once vomiting subsides. Avoid dairy, spicy foods, caffeine, and fatty meals for 48 hours.
-3. **Avoid Unprescribed Antibiotics:** Most acute episodes of gastroenteritis are viral; inappropriate antibiotic use can worsen diarrhea.
+**Clinical Assessment:** Acute gastrointestinal distress, epigastric discomfort, or altered bowel habits.
 
-🚨 **Red Flag Warning Signs (Seek Immediate Medical Attention):**
-- Severe, localized, or worsening abdominal pain (especially in the lower right quadrant).
-- Blood in vomit (hematemesis / coffee-ground appearance) or black tarry stools (melena).
-- Inability to retain liquids for more than 12–24 hours.
-- High fever accompanying acute abdominal pain.
+---
 
-*(Gastroenterology Clinical Triage Standards)*`;
+### 1. Evidence-Based Symptomatic Management
+1. **Hydration & Electrolyte Replacement (Crucial):**
+   - For diarrhea or vomiting: Sip Oral Rehydration Salts (ORS) solution continuously (200–300 mL after every loose stool) to prevent hypovolemic shock.
+   - Avoid plain water alone in large volumes without electrolytes during severe diarrhea.
+2. **Dietary Protocol:**
+   - Follow the **BRAT diet** (Bananas, Rice, Applesauce, Toast) once active emesis subsides.
+   - For acidity / GERD: Avoid lying flat for 2 hours post-meal, elevate the head of the bed by 6 inches, and avoid trigger foods (coffee, fried/fatty meals, citrus, carbonated beverages).
+3. **Medication Guidance:**
+   - *Acidity / Gastric Burn:* Antacids (e.g. Magnesium/Aluminum hydroxide with Simethicone) or H2 blockers (Famotidine 20mg) provide prompt acid neutralization.
+   - *Abdominal Cramps:* Antispasmodics (e.g. Dicyclomine/Drotaverine) may be considered under medical guidance.
+   - ⚠️ *Avoid unprescribed antibiotics or antimotility agents (Loperamide)* in infectious/febrile diarrhea, as they can prolong bacterial toxin retention.
+
+---
+
+### 🚨 2. Red Flags Requiring Urgent Hospital Care
+- **Severe Localized Pain:** Continuous, severe, or rigid abdominal pain (especially right lower quadrant — Appendicitis concern).
+- **Gastrointestinal Bleeding:** Vomiting blood (hematemesis) or dark "coffee ground" material; black tarry stools (melena).
+- **Dehydration Crisis:** Inability to retain fluids for over 12–24 hours, confusion, sunken eyes, or anuria (absence of urine for >8 hours).
+- **High Fever:** Sustained fever >101.5°F accompanying abdominal cramps.
+
+*(Gastroenterological Practice Triage Protocol)*`;
   }
 
-  // 6. Hemoglobin, Platelets, and Complete Blood Count (CBC)
+  // 6. Back Pain, Neck Pain, Knee Pain, Joint Pain, Sciatica, Arthritis, Musculoskeletal Strains
+  if (
+    q.includes('back pain') ||
+    q.includes('neck pain') ||
+    q.includes('knee pain') ||
+    q.includes('joint pain') ||
+    q.includes('sciatica') ||
+    q.includes('arthritis') ||
+    q.includes('kamar dard') ||
+    q.includes('ghutne me dard') ||
+    q.includes('sprain') ||
+    q.includes('strain') ||
+    q.includes('muscle pain') ||
+    q.includes('cramp')
+  ) {
+    return `### 🦴 Clinical Triage: Musculoskeletal & Spine / Joint Pain
+
+**Clinical Assessment:** Acute or subacute musculoskeletal pain, joint inflammation, or radicular discomfort.
+
+---
+
+### 1. Evidence-Based Conservative Management (P.R.I.C.E. Protocol)
+1. **Relative Rest & Active Mobility:**
+   - Avoid heavy lifting, forward spinal flexion, and prolonged static posture.
+   - Strict bed rest beyond 24–48 hours is counterproductive for mechanical back pain; maintain gentle walking and neutral spinal alignment.
+2. **Thermal Therapy:**
+   - *First 48 hours:* Apply cold ice packs wrapped in a cloth for 15–20 minutes every 3–4 hours to suppress acute inflammatory swelling.
+   - *After 48 hours:* Transition to moist heat compresses to relax hypertonic muscular spasms.
+3. **Analgesic & Anti-inflammatory Support:**
+   - Topical NSAID gel (e.g. Diclofenac gel 1%) massaged gently over the affected area 3 times daily.
+   - Oral Acetaminophen (500–650 mg) or Ibuprofen (400 mg with meals) for short-term relief, provided no renal or ulcer contraindications exist.
+4. **Ergonomic Posture:**
+   - Sleep with a supportive pillow between knees (side sleeper) or beneath knees (back sleeper) to unload lumbar lordosis.
+
+---
+
+### 🚨 2. Red Flag Symptoms (Urgent Medical Evaluation Required)
+- **Cauda Equina Warning:** Sudden loss of bowel or bladder control, or numbness around the groin/saddle area.
+- **Progressive Motor Weakness:** "Foot drop" or sudden inability to bear weight on the lower extremity.
+- **Fever with Back Pain:** Spinal tenderness with concurrent fever (risk of epidural abscess or discitis).
+- **Unexplained Weight Loss:** Or history of malignancy with new unrelenting night pain.
+
+*(Orthopedic & Physical Medicine Clinical Guidelines)*`;
+  }
+
+  // 7. Skin Rashes, Hives, Itching, Eczema, Dermatitis, Allergies, Burns, Wounds
+  if (
+    q.includes('rash') ||
+    q.includes('skin') ||
+    q.includes('itch') ||
+    q.includes('itching') ||
+    q.includes('hives') ||
+    q.includes('urticaria') ||
+    q.includes('eczema') ||
+    q.includes('allergy') ||
+    q.includes('khujli') ||
+    q.includes('burn') ||
+    q.includes('wound')
+  ) {
+    return `### 🛡️ Clinical Guidance: Dermatology, Rashes & Skin Reactions
+
+**Clinical Assessment:** Cutaneous eruption, pruritus (itching), or acute dermatological reaction.
+
+---
+
+### 1. Immediate Care & Symptomatic Relief
+1. **Cool Compress & Soothing Agents:**
+   - Apply cool, damp cotton cloths to pruritic areas to dampen cutaneous nerve endings.
+   - Apply Calamine lotion or colloidal oatmeal moisturizer to relieve itching.
+2. **Antihistamine Therapy:**
+   - Non-sedating oral antihistamines (e.g. Cetirizine 10 mg or Fexofenadine 120–180 mg once daily) provide effective relief for acute hives (urticaria) and allergic eruptions.
+3. **Avoid Aggravating Factors:**
+   - Wash with lukewarm water and fragrance-free, hypoallergenic cleansers; avoid hot showers.
+   - Wear loose, breathable cotton clothing.
+   - Avoid scratching to prevent secondary bacterial superinfections (impetiginization).
+4. **For Minor Burns / Cuts:**
+   - Run cool (not icy) tap water over thermal burns for at least 10–15 minutes. Apply petroleum jelly and a sterile non-stick bandage. Never burst burn blisters.
+
+---
+
+### 🚨 2. Emergency Red Flags (Anaphylaxis & Severe Reactions)
+- **Anaphylaxis Alert:** Rash accompanied by lip/tongue/throat swelling, difficulty breathing, wheezing, or dizziness (**requires immediate Epinephrine / 112 emergency care**).
+- **Blistering / Skin Peeling:** Rapidly expanding rash with mucosal involvement (eyes, mouth, genitals) or positive Nikolsky sign (concern for SJS/TEN).
+- **Spreading Cellulitis:** Rapidly expanding redness, heat, streaking, and severe pain with fever.
+
+*(Clinical Dermatology & Allergy Triage Standards)*`;
+  }
+
+  // 8. Diabetes, Blood Glucose, HbA1c, Thyroid & Metabolic Disorders
+  if (
+    q.includes('sugar') ||
+    q.includes('glucose') ||
+    q.includes('diabetes') ||
+    q.includes('hba1c') ||
+    q.includes('thyroid') ||
+    q.includes('tsh') ||
+    q.includes('cholesterol') ||
+    q.includes('lipid') ||
+    q.includes('uric acid') ||
+    q.includes('gout')
+  ) {
+    return `### 🩸 Clinical Reference: Glycemic, Thyroid & Metabolic Health
+
+**Clinical Diagnostic Standards:** American Diabetes Association (ADA) and Endocrine Society Clinical Guidelines.
+
+---
+
+### 1. Glycemic Reference Intervals & Diagnostic Thresholds
+| Biomarker | Normal Physiological Range | Pre-Diabetes / Borderline | Diabetes Diagnostic Threshold |
+| :--- | :--- | :--- | :--- |
+| **Fasting Blood Glucose (FBG)** | **70 – 99 mg/dL** | 100 – 125 mg/dL | **≥ 126 mg/dL** (confirmed on repeat) |
+| **Post-Prandial (2 hrs post-meal)** | **< 140 mg/dL** | 140 – 199 mg/dL | **≥ 200 mg/dL** |
+| **Glycated Hemoglobin (HbA1c)** | **< 5.7%** | 5.7% – 6.4% | **≥ 6.5%** |
+| **Random Blood Glucose** | **< 140 mg/dL** | — | **≥ 200 mg/dL** (with symptoms) |
+
+---
+
+### 2. Thyroid Function Test (TFT) Reference Standards
+- **TSH (Thyroid Stimulating Hormone):** **0.4 – 4.0 mIU/L** (Primary screening marker).
+  - *Elevated TSH (>4.5 mIU/L):* Primary **Hypothyroidism** (symptoms: fatigue, cold intolerance, weight gain, constipation).
+  - *Suppressed TSH (<0.4 mIU/L):* Primary **Hyperthyroidism** (symptoms: palpitations, heat intolerance, tremor, unintended weight loss).
+- **Free T4:** 0.8 – 1.8 ng/dL | **Free T3:** 2.3 – 4.2 pg/mL.
+
+---
+
+### 🚨 3. Acute Metabolic Emergencies
+- **Hypoglycemia (< 70 mg/dL):** Shakiness, sweating, pallor, confusion. Treat immediately with the **"Rule of 15"**: Consume 15g fast-acting carbohydrates (1/2 cup fruit juice or 3 glucose tablets), recheck in 15 minutes.
+- **Diabetic Ketoacidosis (DKA) / HHS:** Severely high glucose (>250–600 mg/dL) with vomiting, rapid breathing (Kussmaul breathing), fruity breath, and altered sensorium requires immediate emergency hospital admission.
+
+*(Clinical Endocrinology Reference Standards)*`;
+  }
+
+  // 9. Urinary Tract Infections (UTI), Burning Urination, Kidney Stones, Flank Pain
+  if (
+    q.includes('uti') ||
+    q.includes('urinary') ||
+    q.includes('urine') ||
+    q.includes('burning') ||
+    q.includes('peshab') ||
+    q.includes('kidney stone') ||
+    q.includes('flank pain')
+  ) {
+    return `### 🚽 Clinical Triage: Urinary Symptoms & Renal Health
+
+**Clinical Assessment:** Dysuria (painful/burning urination), frequency, urgency, or flank tenderness.
+
+---
+
+### 1. Evidence-Based Initial Guidance
+1. **Aggressive Hydration:**
+   - Drink 2.5 to 3.5 liters of water daily to promote mechanical flushing of the urinary bladder and ureters.
+2. **Alkalinizing Agents:**
+   - Urinary alkalinizers (e.g. Potassium citrate or Sodium bicarbonate solution) can alleviate acute burning sensations by neutralizing urinary pH.
+3. **Diagnostic Confirmation Before Antibiotics:**
+   - Obtain a clean-catch midstream **Urine Routine & Microscopic Examination (Urine R/M)** and **Urine Culture & Sensitivity (Urine C/S)** before initiating antibiotics to prevent antimicrobial resistance.
+4. **Kidney Stone Hydration & Pain Relief:**
+   - For suspected renal colic (intermittent severe flank pain radiating to the groin): oral hydration and paracetamol/NSAIDs under physician guidance.
+
+---
+
+### 🚨 2. Red Flags Requiring Immediate Medical Attention
+- **Pyelonephritis Warning:** Burning urination accompanied by high fever, shaking chills, and unilateral flank / lower back pain (Upper UTI).
+- **Gross Hematuria:** Visible red or dark blood in the urine.
+- **Urinary Retention:** Acute inability to pass urine despite severe bladder pressure.
+
+*(Clinical Urology & Infectious Disease Protocols)*`;
+  }
+
+  // 10. Anxiety, Panic Attack, Insomnia, Sleep Disturbances, Stress
+  if (
+    q.includes('anxiety') ||
+    q.includes('panic') ||
+    q.includes('stress') ||
+    q.includes('insomnia') ||
+    q.includes('sleep') ||
+    q.includes('depression') ||
+    q.includes('neend') ||
+    q.includes('nervous')
+  ) {
+    return `### 🧘 Clinical Guidance: Stress, Anxiety & Sleep Hygiene Triage
+
+**Clinical Assessment:** Autonomic nervous system hyperarousal, situational anxiety, or disrupted circadian rhythm.
+
+---
+
+### 1. Acute Relief Protocol (Grounding & Breath Control)
+1. **Physiological Sigh (Rapid Calming Technique):**
+   - Take two deep inhales through the nose (one full inhale, followed by a sharp top-off inhale), followed by a long, slow exhale through the mouth. Repeat 4–5 times to stimulate the vagus nerve and slow heart rate.
+2. **5-4-3-2-1 Grounding Method:**
+   - Acknowledge 5 things you can see, 4 you can touch, 3 you can hear, 2 you can smell, and 1 you can taste to decouple from panic thought loops.
+3. **Clinical Sleep Hygiene (CBT-I Principles):**
+   - Maintain a strict waking time 7 days a week.
+   - Keep bedroom completely dark and cool (65–68°F / 18–20°C).
+   - Cease caffeine intake at least 8 hours prior to bedtime.
+   - Eliminate blue-light screen exposure 60 minutes before sleep.
+
+---
+
+### 🚨 2. When to Seek Urgent Clinical Support
+- Severe despair, hopelessness, or thoughts of self-harm (Contact National Helpline: **14416 / 988** or local crisis services immediately).
+- Chest tightness or hyperventilation that does not resolve after 15 minutes of grounding.
+
+*(Behavioral Health & Sleep Medicine Triage Protocol)*`;
+  }
+
+  // 11. Hemoglobin, Platelets, and Complete Blood Count (CBC)
   if (
     q.includes('hemoglobin') ||
     q.includes('platelet') ||
@@ -252,99 +474,30 @@ Go immediately to an Urgent Care or Emergency Department if you observe any of t
     q.includes('anemia') ||
     q.includes('hematocrit')
   ) {
-    if (lang === 'hi' || lang === 'hindi') {
-      return `### 🩸 हीमोग्लोबिन और प्लेटलेट सामान्य संदर्भ श्रेणियां (Normal Reference Ranges)
-
-रक्त जांच (CBC) के अनुसार स्वस्थ वयस्कों के लिए मानक चिकित्सा संदर्भ श्रेणियां निम्नलिखित हैं:
-
-| पैरामीटर (Parameter) | सामान्य संदर्भ श्रेणी (Reference Range) | इकाई (Unit) | नैदानिक महत्व (Clinical Significance) |
-| :--- | :--- | :--- | :--- |
-| **हीमोग्लोबिन (Hb) — वयस्क पुरुष** | **13.8 – 17.2** | g/dL | शरीर के ऊतकों तक ऑक्सीजन पहुँचाने वाला मुख्य प्रोटीन |
-| **हीमोग्लोबिन (Hb) — वयस्क महिला** | **12.1 – 15.1** | g/dL | महिलाओं में प्राकृतिक हार्मोनल व शारीरिक आधार |
-| **हीमोग्लोबिन (Hb) — गर्भावस्था** | **11.0 – 14.0** | g/dL | प्लाज्मा फैलाव (Hemodilution) के कारण |
-| **प्लेटलेट्स (Platelets / Thrombocytes)** | **150,000 – 450,000** | /µL | रक्त का थक्का (Clotting) जमाने और रक्तस्राव रोकने के लिए आवश्यक |
-| **श्वेत रक्त कोशिकाएं (WBC / Leukocytes)** | **4,500 – 11,000** | /µL | संक्रमण और प्रतिरक्षा प्रणाली की सुरक्षा |
-| **हेमेटोक्रिट (Hematocrit - Hct)** | **पुरुष: 40.7%–50.3%, महिला: 36.1%–44.3%** | % | कुल रक्त में लाल रक्त कोशिकाओं का प्रतिशत |
-
----
-
-### 🔬 असामान्य मानों का नैदानिक प्रभाव (Clinical Interpretation)
-
-#### 1. हीमोग्लोबिन (Hemoglobin)
-- **कम हीमोग्लोबिन (< 12.0 g/dL महिलाओं में, < 13.5 g/dL पुरुषों में):**
-  - **एनीमिया (Anemia):** आयरन की कमी, विटामिन बी12/फोलेट की कमी, या रक्तस्राव के कारण हो सकता है।
-  - **लक्षण:** अत्यधिक थकान, सांस फूलना, चक्कर आना, पीलापन, कमजोरी।
-  - ⚠️ **गंभीर चेतावनी:** 7.0–8.0 g/dL से कम होने पर तत्काल अस्पताल में रक्त चढ़ाने (Transfusion) की आवश्यकता हो सकती है।
-
-#### 2. प्लेटलेट्स (Platelets)
-- **कम प्लेटलेट्स (< 150,000 /µL - थ्रोम्बोसाइटोपेनिया):**
-  - वायरल संक्रमण (जैसे डेंगू, चिकनगुनिया), दवाओं के दुष्प्रभाव या ऑटोइम्यून समस्याओं से हो सकता है।
-  - **जोखिम:** 50,000 से कम होने पर त्वचा पर नीले निशान, नाक या मसूड़ों से रक्तस्राव का खतरा बढ़ जाता है।
-  - 🚨 **आपातकाल:** 20,000 से कम होने पर तुरंत आपातकालीन चिकित्सा सहायता लें।
-
----
-
-> ⚠️ **परामर्श सूचना:** विभिन्न प्रयोगशालाओं के उपकरणों के अनुसार संदर्भ श्रेणियों में थोड़ा अंतर हो सकता है। अपनी रिपोर्ट को हमेशा अपने चिकित्सक से सत्यापित करवाएं।
-
-*(चिकित्सा संदर्भ डेटाबेस द्वारा सत्यापित)*`;
-    }
-
     return `### 🩸 Hemoglobin & Platelet Reference Ranges & Clinical Interpretation
 
-Standard clinical laboratory reference intervals established for healthy adults are structured as follows:
+Standard clinical laboratory reference intervals established for healthy adults:
 
 | Hematological Parameter | Standard Reference Range | Conventional Units | Clinical Significance |
 | :--- | :--- | :--- | :--- |
-| **Hemoglobin (Hb) — Adult Male** | **13.8 – 17.2** | g/dL (8.6 – 10.7 mmol/L) | Oxygen-carrying metalloprotein in erythrocytes. |
+| **Hemoglobin (Hb) — Adult Male** | **13.8 – 17.2** | g/dL (8.6 – 10.7 mmol/L) | Oxygen transport protein in erythrocytes. |
 | **Hemoglobin (Hb) — Adult Female** | **12.1 – 15.1** | g/dL (7.5 – 9.4 mmol/L) | Physiological baseline adjusted for hormonal factors. |
-| **Hemoglobin (Hb) — Pregnancy** | **11.0 – 14.0** | g/dL | Physiological hemodilution (expanded plasma volume). |
-| **Platelets (Thrombocytes)** | **150,000 – 450,000** | /µL (150 – 450 × 10⁹/L) | Essential for primary hemostasis and vascular clot formation. |
+| **Platelets (Thrombocytes)** | **150,000 – 450,000** | /µL (150 – 450 × 10⁹/L) | Essential for vascular clot formation and hemostasis. |
 | **Total WBC Count (Leukocytes)** | **4,500 – 11,000** | /µL | Primary immune defense against bacterial and viral infections. |
-| **Hematocrit (Hct) — Male** | **40.7% – 50.3%** | % volume of packed RBCs | Evaluates whole blood cellular concentration. |
-| **Hematocrit (Hct) — Female** | **36.1% – 44.3%** | % volume of packed RBCs | Evaluates whole blood cellular concentration. |
+| **Hematocrit (Hct) — Male** | **40.7% – 50.3%** | % volume | Packed cell volume. |
+| **Hematocrit (Hct) — Female** | **36.1% – 44.3%** | % volume | Packed cell volume. |
 
 ---
 
 ### 🔬 Clinical Interpretation of Deviations
-
-#### 1. Hemoglobin (Hb)
-- **Low Hemoglobin (< 12.0 g/dL in females, < 13.5 g/dL in males):**
-  - **Clinical Condition:** **Anemia**.
-  - **Common Etiologies:** Nutritional iron deficiency, Vitamin B12 or folate deficiency, chronic kidney disease (impaired erythropoietin production), acute or occult gastrointestinal bleeding, or bone marrow suppression.
-  - **Clinical Manifestations:** Fatigue, exertional dyspnea, pallor, orthostatic dizziness, tachyarrhythmias, and cold intolerance.
-  - ⚠️ **Critical Alert Threshold:** Levels below **7.0 – 8.0 g/dL** frequently necessitate urgent clinical evaluation and potential packed red blood cell (PRBC) transfusion.
-
-- **High Hemoglobin (> 17.5 g/dL in males, > 15.5 g/dL in females):**
-  - **Clinical Condition:** **Erythrocytosis / Polycythemia**.
-  - **Common Etiologies:** Dehydration (spurious hemoconcentration), chronic hypoxemia (COPD, obstructive sleep apnea, living at high altitudes), heavy tobacco use, or myeloproliferative disorders (Polycythemia Vera).
-
----
-
-#### 2. Platelet Count (Thrombocytes)
-- **Low Platelet Count (< 150,000 /µL):**
-  - **Clinical Condition:** **Thrombocytopenia**.
-  - **Common Etiologies:** Acute viral infections (Dengue, EBV, Hepatitis), drug-induced immune thrombocytopenia, autoimmune consumption (ITP), splenic sequestration, or marrow hypoplasia.
-  - **Hemorrhagic Risk Stratification:**
-    - *Mild (100,000 – 150,000 /µL):* Typically asymptomatic; standard surgical safety.
-    - *Moderate (50,000 – 100,000 /µL):* Potential for prolonged bleeding with trauma or invasive procedures.
-    - *Severe (< 50,000 /µL):* Significant risk of spontaneous ecchymoses, petechiae, and mucosal bleeding.
-    - 🚨 *Critical (< 20,000 /µL):* Immediate danger of spontaneous visceral or intracranial hemorrhage; requires emergent hematology consultation.
-
-- **High Platelet Count (> 450,000 /µL):**
-  - **Clinical Condition:** **Thrombocytosis**.
-  - **Common Etiologies:** Reactive / secondary response to systemic infection, chronic inflammation (rheumatoid arthritis, IBD), acute blood loss recovery, iron deficiency, or clonal thrombocythemia.
-
----
-
-### 📋 Recommended Clinical Next Steps
-1. **Correlate with Red Cell Indices:** Evaluate MCV, MCH, and RDW to differentiate microcytic (iron deficiency/thalassemia) from macrocytic (B12/folate) patterns.
-2. **Review Peripheral Smear:** Warranted if atypical cell morphology or unexplained multi-lineage cytopenias are present.
-3. **Clinical Consultation:** Laboratory reference intervals may vary slightly depending on assay platforms. Always correlate these laboratory values with your attending physician.
+- **Low Hemoglobin (< 12.0 g/dL females, < 13.5 g/dL males):** Indicates **Anemia** (nutritional iron deficiency, Vitamin B12 deficiency, or blood loss). Levels below **7.0–8.0 g/dL** require urgent clinical evaluation.
+- **Low Platelet Count (< 150,000 /µL):** Indicates **Thrombocytopenia** (viral infections like Dengue, medication effects, or autoimmune consumption). Counts under **50,000 /µL** increase bleeding risk, and under **20,000 /µL** represent a critical emergency.
+- **Elevated White Blood Cells (> 11,000 /µL):** Indicates active immune response to infection, systemic inflammation, or physiological stress.
 
 *(Clinical Intelligence Grounded in Hematology Laboratory Reference Standards)*`;
   }
 
-  // 7. Vital Signs & Blood Pressure
+  // 12. Vital Signs & Blood Pressure
   if (q.includes('vital') || q.includes('blood pressure') || q.includes('bp') || q.includes('spo2') || q.includes('heart rate') || q.includes('pulse')) {
     return `### 🫀 Adult Vital Signs Reference Standards
 
@@ -364,31 +517,13 @@ Standard physiological reference thresholds for resting adults:
 *(Clinical Intelligence Grounded in AHA/ACC Cardiovascular Guidelines)*`;
   }
 
-  // 8. Blood Glucose & Diabetes Management
-  if (q.includes('sugar') || q.includes('glucose') || q.includes('diabetes') || q.includes('hba1c')) {
-    return `### 🩸 Glycemic Reference Ranges & Diabetes Biomarkers
-
-Clinical diagnostic criteria based on American Diabetes Association (ADA) guidelines:
-
-| Glycemic Marker | Normal Reference | Pre-Diabetes Threshold | Diabetes Diagnostic Threshold |
-| :--- | :--- | :--- | :--- |
-| **Fasting Blood Glucose (FBG)** | **70 – 99 mg/dL** | 100 – 125 mg/dL | **≥ 126 mg/dL** (confirmed on repeat) |
-| **Post-Prandial (2h after meal)** | **< 140 mg/dL** | 140 – 199 mg/dL | **≥ 200 mg/dL** |
-| **Glycated Hemoglobin (HbA1c)** | **< 5.7%** | 5.7% – 6.4% | **≥ 6.5%** |
-| **Random Plasma Glucose** | **< 140 mg/dL** | — | **≥ 200 mg/dL** (with symptoms of hyperglycemia) |
-
-> ⚠️ **Key Takeaways:** HbA1c reflects average glycemia over the preceding 90 days. For individuals with established diabetes, target HbA1c is generally **< 7.0%**, personalized to patient age and cardiovascular risk factors.
-
-*(Clinical Intelligence Grounded in ADA Glycemic Standards)*`;
-  }
-
-  // 9. Attached Document Context RAG Synthesis
+  // 13. Attached Document Context RAG Synthesis
   if (docContext && docContext.trim().length > 0) {
     return `### 📑 Document Analysis & Clinical Review
 
 Based on the clinical documents and lab reports attached to your consultation:
 
-${docContext.slice(0, 800)}...
+${docContext.slice(0, 1000)}
 
 ---
 
@@ -400,30 +535,46 @@ ${docContext.slice(0, 800)}...
 *(Grounded in Uploaded Clinical Records)*`;
   }
 
-  // 10. General Comprehensive Health Guidance (Structured Clinical Assessment)
+  // 14. Comprehensive Structured Medical Consultation Assessment (Default)
   return `### 🩺 Medical AI Clinical Intelligence Consultation
 
 **Inquiry Assessment:** "${message}"
 
-### 1. Clinical Overview & Triage Guidance
-- **Symptom Correlation:** Correlate your symptoms with chronological duration, severity, and any aggravating or relieving factors.
-- **Baseline Vitals Assessment:** Check and record resting vital signs (blood pressure, pulse rate, temperature, SpO2) as an objective measure of physiological stability.
-- **Current Regimen Review:** Consider whether symptoms may represent adverse reactions or interactions with current medications or recent lifestyle changes.
+---
 
-### 2. General Self-Care Recommendations
-- Maintain adequate hydration (water, broths, electrolyte solutions).
-- Ensure adequate physical rest to support physiological recovery.
-- Avoid initiating unprescribed medications or antibiotics without clinical evaluation.
+### 1. Clinical Overview & Symptom Evaluation
+- **Pathophysiology & Context:** Your inquiry regarding **"${message}"** has been reviewed through our evidence-based clinical intelligence framework.
+- **Symptom Correlation:** Evaluate the onset, exact anatomical location, chronological duration, severity scale (1–10), and whether symptoms are triggered or relieved by specific movements, postures, or foods.
+- **Baseline Vitals:** Monitor resting vital signs (Blood Pressure, Heart Rate, Body Temperature, SpO2) as an objective indicator of systemic physiological stability.
 
-### 🚨 3. When to Seek Medical Attention
-Contact your doctor or urgent care provider if your symptoms:
-- Worsen steadily over 48 to 72 hours.
-- Interfere with normal breathing, eating, or fluid intake.
-- Are accompanied by intense localized pain, high fever, or neurological symptoms.
+---
 
-> ℹ️ *Clinical correlation notice: This guidance is for preliminary triage information. Please consult your physician for clinical diagnosis and individualized care.*
+### 2. Evidence-Based Self-Care & Supportive Protocols
+- **Hydration & Nutrition:** Maintain adequate oral fluid intake (2 to 2.5 L daily) with balanced electrolytes. Consume light, digestible, nutrient-dense meals.
+- **Rest & Physiological Recovery:** Prioritize 7 to 8 hours of uninterrupted sleep; avoid strenuous physical exertion until acute symptoms resolve.
+- **Medication Prudence:** Avoid taking unprescribed antibiotics, steroids, or high-dose painkillers without professional medical evaluation.
 
-*(Grounded in Clinical Intelligence Triage Knowledge Base)*`;
+---
+
+### 🚨 3. Red Flag Warning Signs (Seek Immediate Medical Care)
+Contact urgent medical care or emergency services immediately if you experience:
+- Sudden difficulty breathing, chest pain, or radiating arm/jaw discomfort.
+- High fever exceeding **103°F (39.4°C)** or fever unresponsive to antipyretics.
+- Severe, localized, unremitting pain or recurrent vomiting with inability to retain fluids.
+- Neurological changes such as confusion, slurred speech, sudden dizziness, or vision loss.
+
+---
+
+### 📋 4. Recommended Next Steps for Your Doctor's Visit
+1. **Clinical Workup:** Request your attending physician to evaluate relevant laboratory baselines (e.g. Complete Blood Count, Metabolic Panel, or focused imaging).
+2. **Questions to Ask Your Doctor:**
+   - *"What are the most likely causes of these symptoms given my medical history?"*
+   - *"Are there specific diagnostic tests recommended to rule out secondary complications?"*
+   - *"What specific signs should prompt me to return for urgent follow-up?"*
+
+> ℹ️ *Clinical correlation advisory: This guidance provides preliminary clinical intelligence and triage support. It does not replace an in-person examination or definitive diagnosis by a qualified medical professional.*
+
+*(Grounded in Clinical Intelligence & Evidence-Based Medical Protocols)*`;
 }
 
 export function createChatApiRouter() {
@@ -434,6 +585,43 @@ export function createChatApiRouter() {
   router.use('/clinical', createClinicalApiRouter());
   router.use('/auth', createAuthApiRouter());
   router.use('/identity', createIdentityApiRouter());
+
+  // Network host discovery endpoint for real scannable QR codes
+  router.get('/network/host', (_req, res) => {
+    try {
+      const ifaces = os.networkInterfaces();
+      let detectedIp = '';
+
+      for (const name of Object.keys(ifaces)) {
+        for (const net of ifaces[name] || []) {
+          // Look for IPv4 non-internal address
+          if (net.family === 'IPv4' && !net.internal && net.address !== '127.0.0.1') {
+            detectedIp = net.address;
+            break;
+          }
+        }
+        if (detectedIp) break;
+      }
+
+      const host = detectedIp || process.env.VITE_PUBLIC_HOST || '10.149.6.231';
+      const port = process.env.PORT || '3000';
+      const origin = `http://${host}:${port}`;
+
+      res.json({
+        host,
+        port,
+        origin,
+        isDetected: Boolean(detectedIp)
+      });
+    } catch (err: any) {
+      res.json({
+        host: '10.149.6.231',
+        port: '3000',
+        origin: 'http://10.149.6.231:3000',
+        error: err?.message
+      });
+    }
+  });
 
   // 1. Health check & model capability endpoint
   router.get('/health', async (_req, res) => {
@@ -466,6 +654,18 @@ export function createChatApiRouter() {
     });
   });
 
+  // 1.5. Dynamic Multi-Provider Model Catalog & Real-Time Availability
+  router.get('/chat/models', (_req, res) => {
+    const models = getModelRegistry();
+    const defaultModelId = getDefaultModelId();
+    res.json({
+      success: true,
+      models,
+      defaultModelId,
+      timestamp: new Date().toISOString()
+    });
+  });
+
   // 2. Core Chat & Document RAG Endpoint with SSE Streaming
   router.post('/chat', async (req, res) => {
     const startTime = Date.now();
@@ -481,7 +681,9 @@ export function createChatApiRouter() {
       attachments = [],
       documents = [],
       user_id,
-      patient_profile
+      patient_profile,
+      model_id,
+      auto_fallback = true
     } = req.body || {};
 
     console.log(`[CHAT] Request received: convId=${conversation_id || 'new'} user=${user_id || 'anon'} lang=${language} mode=${search_mode} attachments=${attachments.length} docs=${documents.length}`);
@@ -540,7 +742,9 @@ export function createChatApiRouter() {
     const apiKey = process.env.GEMINI_API_KEY || '';
     const isApiKeyValid = Boolean(apiKey && apiKey.trim().length > 0 && apiKey !== 'MY_GEMINI_API_KEY');
 
-    const wantsStreaming = req.body?.stream !== false && (!req.headers.accept?.includes('application/json') || req.headers.accept?.includes('text/event-stream'));
+    const wantsStreaming =
+      req.body?.stream === true ||
+      (req.body?.stream !== false && Boolean(req.headers.accept?.includes('text/event-stream')));
 
     let isClientClosed = false;
     res.on('close', () => {
@@ -558,33 +762,6 @@ export function createChatApiRouter() {
       res.flushHeaders?.();
     }
 
-    // If API key is not configured, seamlessly serve validated Clinical Knowledge Engine
-    if (!isApiKeyValid) {
-      console.warn('[CHAT] GEMINI_API_KEY not configured. Serving Clinical Intelligence Knowledge Engine.');
-      const fallbackText = generateClinicalReferenceFallback(message || '', language, docContext, patient_profile);
-      if (wantsStreaming) {
-        const streamChunks = splitIntoStreamChunks(fallbackText);
-        for (const chunk of streamChunks) {
-          if (isClientClosed || res.writableEnded || res.destroyed) break;
-          res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
-          await new Promise((r) => setTimeout(r, 15));
-        }
-        res.write('data: [DONE]\n\n');
-        res.end();
-      } else {
-        res.json({
-          success: true,
-          text: fallbackText,
-          response: fallbackText,
-          model: 'Clinical-Intelligence-Knowledge-Engine',
-          modelUsed: 'Clinical-Intelligence-Knowledge-Engine',
-          durationMs: Date.now() - startTime
-        });
-      }
-      return;
-    }
-
-    // Construct clinical system prompt
     const systemPrompt = `You are Medical AI, an advanced Clinical Intelligence and Preliminary Triage Assistant.
 You assist patients and doctors in understanding medical lab reports (Complete Blood Counts, Biochemistry panels, Imaging summaries, Prescriptions, Discharge summaries) and their personalized health profile.
 
@@ -618,169 +795,90 @@ ${docContext && docContext.trim().length > 0 ? docContext : (attachments.length 
 `;
 
     try {
-      console.log(`[AI] Initializing @google/genai SDK...`);
-      const { GoogleGenAI } = await import('@google/genai');
-      const ai = new GoogleGenAI({ apiKey });
-
-      const contents: any[] = [];
-
-      // Add recent conversation turns
-      if (Array.isArray(history) && history.length > 0) {
-        const recentTurns = history.slice(-6);
-        for (const turn of recentTurns) {
-          if (turn && turn.content) {
-            contents.push({
-              role: turn.role === 'assistant' ? 'model' : 'user',
-              parts: [{ text: turn.content }]
-            });
-          }
-        }
-      }
-
-      // Add current user prompt with multimodal attachments if present
-      const userParts: any[] = [];
-      if (Array.isArray(attachments) && attachments.length > 0) {
-        for (const att of attachments) {
-          if (att && att.data && att.mimeType) {
-            const rawBase64 = att.data.includes('base64,') ? att.data.split('base64,')[1] : att.data;
-            userParts.push({
-              inlineData: {
-                mimeType: att.mimeType,
-                data: rawBase64
+      if (wantsStreaming) {
+        await dispatchModelStream(
+          {
+            modelId: model_id,
+            systemPrompt,
+            messages: [
+              ...history.slice(-6).map((h: any) => ({
+                role: h.role === 'assistant' ? 'assistant' : 'user',
+                content: h.content
+              })),
+              {
+                role: 'user',
+                content: message || 'Please analyze the attached clinical context and provide a structured medical summary.'
               }
-            });
-            console.log(`[AI] Added multimodal attachment to Gemini payload: ${att.name || 'document'} (${att.mimeType})`);
-          }
-        }
-      }
-
-      userParts.push({
-        text: message || 'Please analyze, extract all findings, and provide a structured clinical summary of the attached document.'
-      });
-
-      contents.push({
-        role: 'user',
-        parts: userParts
-      });
-
-      let modelSucceeded = false;
-      let lastError: any = null;
-      let fullGeneratedText = '';
-
-      // Try candidate models in order of capability
-      for (const modelName of CANDIDATE_MODELS) {
-        if (isClientClosed || res.writableEnded || res.destroyed) break;
-
-        try {
-          console.log(`[AI] Attempting ${wantsStreaming ? 'stream' : 'generation'} with model: ${modelName}`);
-
-          const timeoutMs = 8000;
-          const timeoutPromise = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error(`Model ${modelName} timeout after ${timeoutMs}ms`)), timeoutMs)
-          );
-
-          if (wantsStreaming) {
-            const streamPromise = ai.models.generateContentStream({
-              model: modelName,
-              contents,
-              config: {
-                systemInstruction: systemPrompt
-              }
-            });
-
-            const responseStream: any = await Promise.race([streamPromise, timeoutPromise]);
-
-            let tokenCount = 0;
-            for await (const chunk of responseStream) {
-              if (isClientClosed || res.writableEnded || res.destroyed) break;
-              const text = chunk.text;
-              if (text) {
-                tokenCount++;
-                fullGeneratedText += text;
-                if (tokenCount === 1) {
-                  res.write(`data: ${JSON.stringify({ modelUsed: modelName })}\n\n`);
-                }
-                res.write(`data: ${JSON.stringify({ text })}\n\n`);
+            ],
+            attachments,
+            language,
+            docContext,
+            patientProfile: patient_profile,
+            autoFallback: auto_fallback !== false,
+            onEvent: async (event) => {
+              if (isClientClosed || res.writableEnded || res.destroyed) return;
+              if (event.type === 'chunk') {
+                res.write(`data: ${JSON.stringify({ text: event.text })}\n\n`);
+              } else if (event.type === 'metadata') {
+                res.write(`data: ${JSON.stringify({ modelUsed: event.modelUsed, fallbackUsed: event.fallbackUsed })}\n\n`);
+              } else if (event.type === 'fallback_notification') {
+                res.write(`data: ${JSON.stringify({ fallbackNotification: true, modelUsed: event.modelUsed, fallbackReason: event.fallbackReason })}\n\n`);
+              } else if (event.type === 'done') {
+                res.write('data: [DONE]\n\n');
+                res.end();
               }
             }
+          },
+          generateClinicalReferenceFallback
+        );
+      } else {
+        // Non-streaming response collection
+        let collectedText = '';
+        let modelUsed = model_id || 'Clinical-Intelligence-Knowledge-Engine';
+        let fallbackUsed = false;
 
-            if (tokenCount > 0) {
-              console.log(`[AI] Stream completed successfully with ${modelName} (${tokenCount} chunks, ${Date.now() - startTime}ms)`);
-              modelSucceeded = true;
-              break;
-            }
-          } else {
-            const genPromise = ai.models.generateContent({
-              model: modelName,
-              contents,
-              config: {
-                systemInstruction: systemPrompt
+        await dispatchModelStream(
+          {
+            modelId: model_id,
+            systemPrompt,
+            messages: [
+              ...history.slice(-6).map((h: any) => ({
+                role: h.role === 'assistant' ? 'assistant' : 'user',
+                content: h.content
+              })),
+              {
+                role: 'user',
+                content: message || 'Please analyze the attached clinical context and provide a structured medical summary.'
               }
-            });
-
-            const response: any = await Promise.race([genPromise, timeoutPromise]);
-            fullGeneratedText = response.text || '';
-            if (fullGeneratedText) {
-              console.log(`[AI] Generation completed successfully with ${modelName} (${fullGeneratedText.length} chars, ${Date.now() - startTime}ms)`);
-              modelSucceeded = true;
-              res.json({
-                success: true,
-                text: fullGeneratedText,
-                response: fullGeneratedText,
-                model: modelName,
-                modelUsed: modelName,
-                durationMs: Date.now() - startTime
-              });
-              break;
+            ],
+            attachments,
+            language,
+            docContext,
+            patientProfile: patient_profile,
+            autoFallback: auto_fallback !== false,
+            onEvent: async (event) => {
+              if (event.type === 'chunk' && event.text) {
+                collectedText += event.text;
+              } else if (event.type === 'metadata' && event.modelUsed) {
+                modelUsed = event.modelUsed;
+                fallbackUsed = Boolean(event.fallbackUsed);
+              }
             }
-          }
-        } catch (err: any) {
-          lastError = err;
-          const isTokenQuota =
-            err?.message?.includes('429') ||
-            err?.message?.includes('RESOURCE_EXHAUSTED') ||
-            err?.message?.includes('quota') ||
-            err?.message?.includes('rate limit') ||
-            err?.message?.includes('token');
+          },
+          generateClinicalReferenceFallback
+        );
 
-          if (isTokenQuota) {
-            console.warn(`[AI-ROUTER] Model ${modelName} reached token quota/rate limit. Auto-switching to next model in cascade...`);
-          } else {
-            console.warn(`[AI-ROUTER] Model ${modelName} failed or unavailable:`, err?.message || err);
-          }
-          // Continue to next candidate model
-        }
-      }
-
-      // If upstream models failed or rate-limited, fall back seamlessly to Clinical Reference Knowledge Engine
-      if (!modelSucceeded && !res.writableEnded && !res.destroyed) {
-        console.warn(`[AI] Live models unavailable (${lastError?.message || 'upstream issue'}). Activating Medical AI Clinical Reference Knowledge Engine...`);
-        const fallbackText = generateClinicalReferenceFallback(message || '', language, docContext, patient_profile);
-
-        if (wantsStreaming) {
-          const streamChunks = splitIntoStreamChunks(fallbackText);
-          for (const chunk of streamChunks) {
-            if (isClientClosed || res.writableEnded || res.destroyed) break;
-            res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
-            await new Promise((r) => setTimeout(r, 15));
-          }
-          modelSucceeded = true;
-        } else {
+        if (!res.headersSent) {
           res.json({
             success: true,
-            text: fallbackText,
-            response: fallbackText,
-            model: 'Clinical-Intelligence-Knowledge-Engine',
-            modelUsed: 'Clinical-Intelligence-Knowledge-Engine',
+            text: collectedText,
+            response: collectedText,
+            model: modelUsed,
+            modelUsed,
+            fallbackUsed,
             durationMs: Date.now() - startTime
           });
-          return;
         }
-      }
-
-      if (wantsStreaming && !res.writableEnded && !res.destroyed) {
-        res.write('data: [DONE]\n\n');
-        res.end();
       }
     } catch (outerErr: any) {
       console.error('[CHAT] Unexpected server error in /api/chat:', outerErr);

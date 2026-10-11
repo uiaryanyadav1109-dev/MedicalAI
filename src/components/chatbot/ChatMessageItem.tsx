@@ -394,8 +394,17 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                 })}
               </span>
               {message.modelUsed && !isUser && (
-                <span className="hidden sm:inline-flex text-[10px] px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-mono border border-blue-200/50 dark:border-blue-800/50">
+                <span className="inline-flex text-[10px] px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-mono border border-blue-200/50 dark:border-blue-800/50">
                   {message.modelUsed}
+                </span>
+              )}
+              {message.fallbackUsed && !isUser && (
+                <span
+                  className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 font-medium"
+                  title={message.fallbackReason || 'Auto-fallback activated due to provider outage or quota'}
+                >
+                  <RefreshCw className="w-2.5 h-2.5" />
+                  Fallback Used
                 </span>
               )}
             </div>
@@ -512,6 +521,14 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                 Symptoms matching red-flag clinical criteria were detected. Do not wait for AI software triage.
                 Contact emergency medical services or visit the nearest emergency facility immediately.
               </div>
+            </div>
+          )}
+
+          {/* Automatic Model Fallback Notice */}
+          {message.fallbackUsed && !isUser && message.fallbackReason && (
+            <div className="mb-3 px-3 py-2 rounded-xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-850 text-amber-900 dark:text-amber-200 text-xs flex items-center gap-2 shadow-2xs">
+              <Info className="w-4 h-4 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+              <span>{message.fallbackReason}</span>
             </div>
           )}
 

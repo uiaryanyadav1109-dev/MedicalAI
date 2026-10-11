@@ -87,6 +87,7 @@ export interface MedicalDatabaseSchema {
   clinicianTeamMembers?: ClinicianTeamMember[];
   caseAssignments?: ClinicianCaseAssignment[];
   clinicianAuditLogs?: ClinicianAccountAuditLog[];
+  qrShareRecords?: any[];
 }
 
 const isBrowserEnv = typeof window !== 'undefined' || typeof process === 'undefined' || typeof process.cwd !== 'function';

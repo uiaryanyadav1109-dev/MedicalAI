@@ -2,7 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'react-qr-code';
 import { useAuth } from '../../../context/AuthContext';
 import { qrShareService } from '../../../services/qrShareService';
-import { getScannableOrigin } from '../../../utils/qrCodeGenerator';
+import {
+  getScannableOrigin,
+  setCustomScannableOrigin,
+  resetScannableOrigin,
+  initScannableOrigin
+} from '../../../utils/qrCodeGenerator';
 import { PatientShareRecord } from '../../../types';
 import { formatIndianPhoneNumber } from '../../../utils/phoneUtils';
 import {
@@ -25,7 +30,10 @@ import {
   Check,
   Heart,
   Sparkles,
-  FileDown
+  FileDown,
+  Copy,
+  Globe,
+  Sliders
 } from 'lucide-react';
 
 export interface PatientCardProps {
@@ -94,6 +102,10 @@ export const PatientCard: React.FC<PatientCardProps> = ({
 
   const patientAge = calculateAge(dateOfBirth);
 
+  // Memoized fallbacks to avoid creating new array instances every render
+  const defaultAllergies = useRef(['Penicillin', 'Sulfa Drugs']).current;
+  const defaultContacts = useRef([]).current;
+
   // Fetch or initialize active dynamic share token
   useEffect(() => {
     const record = qrShareService.getOrCreateActiveRecordForPatient({
@@ -102,18 +114,41 @@ export const PatientCard: React.FC<PatientCardProps> = ({
       patientIdCode,
       dateOfBirth,
       bloodGroup,
-      allergies: user?.allergies || ['Penicillin', 'Sulfa Drugs'],
-      emergencyContacts: user?.emergencyContacts || [],
+      allergies: user?.allergies || defaultAllergies,
+      emergencyContacts: user?.emergencyContacts || defaultContacts,
       importantMedicalNotes: emergencyNotes,
       profileImageUrl: user?.profileImageUrl
     });
     setShareRecord(record);
-  }, [user, patientName, patientIdCode, bloodGroup, dateOfBirth, emergencyNotes]);
+  }, [
+    user?.id,
+    user?.profileImageUrl,
+    patientName,
+    patientIdCode,
+    bloodGroup,
+    dateOfBirth,
+    emergencyNotes,
+    JSON.stringify(user?.allergies),
+    JSON.stringify(user?.emergencyContacts)
+  ]);
 
-  const origin = getScannableOrigin();
+  const [scannableOrigin, setScannableOrigin] = useState<string>(() => getScannableOrigin());
+  const [isCopiedQrUrl, setIsCopiedQrUrl] = useState(false);
+  const [isOriginEditorOpen, setIsOriginEditorOpen] = useState(false);
+  const [customOriginInput, setCustomOriginInput] = useState('');
+
+  // Auto-probe backend LAN IP on component mount
+  useEffect(() => {
+    initScannableOrigin().then((resolved) => {
+      if (resolved) {
+        setScannableOrigin(resolved);
+      }
+    });
+  }, []);
+
   const shareUrl = shareRecord
-    ? `${origin}/share/${shareRecord.token}`
-    : `${origin}/share/loading`;
+    ? `${scannableOrigin}/share/${shareRecord.token}`
+    : `${scannableOrigin}/share/loading`;
 
   // Regenerate dynamic secure share token
   const handleRegenerateQr = () => {
@@ -565,11 +600,9 @@ export const PatientCard: React.FC<PatientCardProps> = ({
       {/* Card Perspective 3D Flip Wrapper — REALISTIC 16:9 RATIO */}
       <div className="w-full max-w-2xl mx-auto perspective-1000">
         <div
-          className={`relative w-full aspect-[16/9] transition-transform duration-700 transform-style-3d select-none cursor-pointer ${
+          className={`relative w-full aspect-[16/9] transition-transform duration-700 transform-style-3d select-none ${
             isFlipped ? 'rotate-y-180' : ''
           }`}
-          onClick={() => setIsFlipped(!isFlipped)}
-          title="Click to flip card"
         >
           {/* ==================== CARD FRONT (16:9 Landscape) ==================== */}
           <div
@@ -595,7 +628,7 @@ export const PatientCard: React.FC<PatientCardProps> = ({
                 </div>
               </div>
 
-              {/* Smart Chip & Status Badge */}
+              {/* Smart Chip & Status Badge & Explicit Flip Button */}
               <div className="flex items-center gap-2">
                 <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] font-mono font-semibold">
                   <div className="w-3 h-2 rounded-xs bg-amber-400/80 border border-amber-300" />
@@ -608,6 +641,19 @@ export const PatientCard: React.FC<PatientCardProps> = ({
                     VERIFIED
                   </span>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsFlipped(true);
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 hover:text-white text-[9px] sm:text-[10px] font-mono rounded-full border border-slate-700 hover:border-blue-500 transition-all cursor-pointer shadow-xs"
+                  title="Flip card to view clinical protocols"
+                >
+                  <RotateCw className="w-3 h-3 text-blue-400" />
+                  <span>FLIP</span>
+                </button>
               </div>
             </div>
 
@@ -772,9 +818,23 @@ export const PatientCard: React.FC<PatientCardProps> = ({
                   PATIENT ID CARD • INSTRUCTIONS & PROTOCOLS
                 </span>
               </div>
-              <span className="text-[9px] font-mono text-slate-400 font-bold">
-                PATIENT ID: {patientIdCode}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-mono text-slate-400 font-bold hidden sm:inline">
+                  PATIENT ID: {patientIdCode}
+                </span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsFlipped(false);
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 hover:text-white text-[9px] sm:text-[10px] font-mono rounded-full border border-slate-700 hover:border-blue-500 transition-all cursor-pointer shadow-xs"
+                  title="Flip back to card front"
+                >
+                  <RotateCw className="w-3 h-3 text-blue-400" />
+                  <span>FRONT</span>
+                </button>
+              </div>
             </div>
 
             {/* Back Middle Section: Instructions & Critical Clinical Baseline */}
@@ -931,8 +991,14 @@ export const PatientCard: React.FC<PatientCardProps> = ({
 
       {/* Download Card Options Modal */}
       {isDownloadModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+          onClick={() => setIsDownloadModalOpen(false)}
+        >
+          <div
+            className="bg-white dark:bg-slate-900 rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 cursor-default"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-2">
                 <FileDown className="w-5 h-5 text-blue-600" />
@@ -942,7 +1008,7 @@ export const PatientCard: React.FC<PatientCardProps> = ({
               </div>
               <button
                 onClick={() => setIsDownloadModalOpen(false)}
-                className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -983,15 +1049,21 @@ export const PatientCard: React.FC<PatientCardProps> = ({
 
       {/* Profile Photo Modal */}
       {isPhotoModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+          onClick={() => setIsPhotoModalOpen(false)}
+        >
+          <div
+            className="bg-white dark:bg-slate-900 rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 cursor-default"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="font-bold text-slate-900 dark:text-white text-sm">
                 Patient Identification Photograph
               </h3>
               <button
                 onClick={() => setIsPhotoModalOpen(false)}
-                className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1053,15 +1125,24 @@ export const PatientCard: React.FC<PatientCardProps> = ({
 
       {/* QR Code Fullscreen Modal */}
       {isQrModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 text-center">
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+          onClick={() => setIsQrModalOpen(false)}
+        >
+          <div
+            className="bg-white dark:bg-slate-900 rounded-2xl max-w-sm sm:max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 text-center cursor-default"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-                Emergency Medical QR Code
-              </h3>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+                  Emergency Medical QR Code
+                </h3>
+              </div>
               <button
                 onClick={() => setIsQrModalOpen(false)}
-                className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1076,8 +1157,99 @@ export const PatientCard: React.FC<PatientCardProps> = ({
                 {patientIdCode} • {patientName}
               </span>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                Scan with any standard smartphone camera to access emergency medical data, primary emergency contact, and doctor handoff summary.
+                Scan with any standard smartphone camera on your local network to access emergency triage, contact, and doctor handoff data.
               </p>
+            </div>
+
+            {/* Verified Scannable URL Banner */}
+            <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 text-left space-y-1.5">
+              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                <span className="flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-blue-500" />
+                  <span>Scannable Network URL:</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(shareUrl);
+                    setIsCopiedQrUrl(true);
+                    setTimeout(() => setIsCopiedQrUrl(false), 2500);
+                  }}
+                  className="text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1 cursor-pointer font-medium"
+                >
+                  {isCopiedQrUrl ? (
+                    <>
+                      <Check className="w-3 h-3 text-emerald-500" />
+                      <span className="text-emerald-600 dark:text-emerald-400">Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3 h-3" />
+                      <span>Copy URL</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              <div className="font-mono text-[10px] text-slate-500 dark:text-slate-400 break-all bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-200 dark:border-slate-800 select-all">
+                {shareUrl}
+              </div>
+
+              {/* Host configuration toggle */}
+              <div className="pt-1 flex items-center justify-between text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => setIsOriginEditorOpen(!isOriginEditorOpen)}
+                  className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 flex items-center gap-1 cursor-pointer"
+                >
+                  <Sliders className="w-3 h-3" />
+                  <span>{isOriginEditorOpen ? 'Hide Host Settings' : 'Change Network Host IP'}</span>
+                </button>
+                <span className="text-emerald-600 dark:text-emerald-400 font-mono font-medium">
+                  {scannableOrigin.includes('localhost') ? '⚠️ Localhost' : '● LAN Ready'}
+                </span>
+              </div>
+
+              {isOriginEditorOpen && (
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-700 space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="e.g. 192.168.1.15:3000 or myhost.lan:3000"
+                      defaultValue={scannableOrigin.replace(/^https?:\/\//, '')}
+                      onChange={(e) => setCustomOriginInput(e.target.value)}
+                      className="flex-1 text-[11px] px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const input = customOriginInput.trim();
+                        if (input) {
+                          const formatted = input.startsWith('http') ? input : `http://${input}`;
+                          setCustomScannableOrigin(formatted);
+                          setScannableOrigin(formatted);
+                          setIsOriginEditorOpen(false);
+                        }
+                      }}
+                      className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-semibold cursor-pointer"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetScannableOrigin();
+                      initScannableOrigin().then((newOrigin) => {
+                        setScannableOrigin(newOrigin);
+                        setIsOriginEditorOpen(false);
+                      });
+                    }}
+                    className="text-[10px] text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 underline cursor-pointer"
+                  >
+                    Reset to Auto-Detected LAN IP
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="pt-2 flex gap-2">
@@ -1086,14 +1258,14 @@ export const PatientCard: React.FC<PatientCardProps> = ({
                   window.open(shareUrl, '_blank');
                   setIsQrModalOpen(false);
                 }}
-                className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
+                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
                 <span>Open Link</span>
               </button>
               <button
                 onClick={() => setIsQrModalOpen(false)}
-                className="py-2 px-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold cursor-pointer"
+                className="py-2.5 px-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold cursor-pointer"
               >
                 Close
               </button>

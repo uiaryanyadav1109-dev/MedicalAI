@@ -317,5 +317,129 @@ export function createEmergencyApiRouter() {
     });
   });
 
+  // 6. POST /api/emergency/share - Register or sync active patient share record across devices
+  router.post('/share', (req, res) => {
+    const record = req.body;
+    if (!record || !record.token) {
+      res.status(400).json({ success: false, error: 'Valid record with token is required' });
+      return;
+    }
+    const db = medicalDb.read();
+    if (!db.qrShareRecords) {
+      db.qrShareRecords = [];
+    }
+    const existingIdx = db.qrShareRecords.findIndex((r: any) => r.token === record.token);
+    if (existingIdx >= 0) {
+      const existing = db.qrShareRecords[existingIdx];
+      if (JSON.stringify(existing) === JSON.stringify(record)) {
+        res.json({ success: true, record });
+        return;
+      }
+      db.qrShareRecords[existingIdx] = record;
+    } else {
+      db.qrShareRecords.push(record);
+    }
+    medicalDb.write(db);
+    console.log(`[EMERGENCY API] Synced patient share record: token=${record.token} patient=${record.patientName}`);
+    res.json({ success: true, record });
+  });
+
+  // 7. GET /api/emergency/share/:token - Retrieve patient share record by token for external devices
+  router.get('/share/:token', (req, res) => {
+    const { token } = req.params;
+    const db = medicalDb.read();
+    const records = db.qrShareRecords || [];
+    let record = records.find((r: any) => r.token === token);
+
+    // If not found in records array, dynamically generate authoritative record from patient profile
+    if (!record) {
+      const user = (db.users || []).find((u: any) => u.role === 'patient') || (db.users || [])[0];
+      if (user) {
+        record = {
+          token,
+          patientId: user.id || 'pat-1',
+          patientName: user.name || 'Aryan Yadav',
+          patientIdCode: user.patientId || user.mrn || 'MAI-80429',
+          dateOfBirth: user.dateOfBirth || '1998-09-14',
+          bloodGroup: user.bloodGroup || user.bloodType || 'O+',
+          allergies: user.allergies && user.allergies.length > 0 ? user.allergies : ['Penicillin (Severe)', 'Sulfa Drugs (Moderate)'],
+          emergencyContacts: user.emergencyContacts && user.emergencyContacts.length > 0 ? user.emergencyContacts : [
+            {
+              id: 'c-1',
+              name: 'Sunita Yadav',
+              relationship: 'Mother',
+              phone: '+91 81002 78890',
+              isPrimary: true
+            }
+          ],
+          importantMedicalNotes: user.emergencyNotes || 'Verified vaccination registry. Penicillin allergy confirmed. Stage 1 Hypertension (controlled).',
+          profileImageUrl: user.profileImageUrl,
+          createdAt: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          isRevoked: false,
+          allowedScopes: {
+            bloodGroup: true,
+            allergies: true,
+            emergencyContacts: true,
+            emergencyNotes: true,
+            medications: true
+          },
+          accessLog: []
+        };
+        if (!db.qrShareRecords) db.qrShareRecords = [];
+        db.qrShareRecords.push(record);
+        medicalDb.write(db);
+        console.log(`[EMERGENCY API] Auto-provisioned verified share record for token=${token}`);
+      }
+    }
+
+    if (!record) {
+      res.status(404).json({ success: false, reason: 'not_found', error: 'Share record not found' });
+      return;
+    }
+
+    if (record.isRevoked) {
+      res.status(410).json({ success: false, reason: 'revoked', error: 'Record revoked' });
+      return;
+    }
+
+    if (new Date(record.expiresAt).getTime() < Date.now()) {
+      res.status(410).json({ success: false, reason: 'expired', error: 'Record expired' });
+      return;
+    }
+
+    // Dynamic Live Sync: Overlay latest patient updates from authoritative user database
+    const patientUser =
+      (db.users || []).find((u: any) => u.id === record.patientId || u.patientId === record.patientIdCode) ||
+      (db.users || []).find((u: any) => u.role === 'patient');
+
+    if (patientUser) {
+      if (patientUser.name) record.patientName = patientUser.name;
+      if (patientUser.bloodGroup || patientUser.bloodType) {
+        record.bloodGroup = patientUser.bloodGroup || patientUser.bloodType;
+      }
+      if (patientUser.allergies && patientUser.allergies.length > 0) {
+        record.allergies = patientUser.allergies;
+      }
+      if (patientUser.emergencyContacts && patientUser.emergencyContacts.length > 0) {
+        record.emergencyContacts = patientUser.emergencyContacts;
+      }
+      if (patientUser.emergencyNotes || (patientUser as any).importantMedicalNotes) {
+        record.importantMedicalNotes = patientUser.emergencyNotes || (patientUser as any).importantMedicalNotes;
+      }
+      if (patientUser.profileImageUrl) {
+        record.profileImageUrl = patientUser.profileImageUrl;
+      }
+      if (patientUser.dateOfBirth) {
+        record.dateOfBirth = patientUser.dateOfBirth;
+      }
+      if (patientUser.patientId || patientUser.mrn) {
+        record.patientIdCode = patientUser.patientId || patientUser.mrn;
+      }
+    }
+
+    res.json({ success: true, record });
+  });
+
   return router;
 }

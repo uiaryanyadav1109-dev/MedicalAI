@@ -79,6 +79,7 @@ class MobileApiClient {
       language: opts.language || 'en',
       history: opts.history || []
     });
+    const replyText = res.text || res.response || 'No response from triage model.';
     const lower = text.toLowerCase();
     const isUrgent =
       lower.includes('emergency') ||
@@ -87,7 +88,7 @@ class MobileApiClient {
       lower.includes('stroke') ||
       lower.includes('severe');
     return {
-      reply: res.response || 'No response from triage model.',
+      reply: replyText,
       urgency: isUrgent ? 'high' : 'normal',
       modelUsed: res.modelUsed,
       citations: res.citations
@@ -482,12 +483,13 @@ class MobileApiClient {
       return this.request<{
         success: boolean;
         response: string;
+        text?: string;
         modelUsed: string;
         citations?: any[];
       }>('/chat', {
         method: 'POST',
         headers: { 'Accept': 'application/json' },
-        body: JSON.stringify({ stream: false, ...payload })
+        body: JSON.stringify({ ...payload, stream: false })
       });
     }
   };

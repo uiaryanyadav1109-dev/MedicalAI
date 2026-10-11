@@ -4,7 +4,8 @@ import {
   ChatMessage,
   ChatDocument,
   LanguageCode,
-  SearchMode
+  SearchMode,
+  AIModelConfig
 } from '../../types/chat';
 import * as chatStore from '../../services/chatStore';
 import { clinicalStore } from '../../services/clinicalStore';
@@ -75,11 +76,41 @@ export const MedicalChatLayout: React.FC<MedicalChatLayoutProps> = ({ onBack }) 
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentStatusText, setCurrentStatusText] = useState<string>('');
 
+  // Multi-Provider AI Model States
+  const [availableModels, setAvailableModels] = useState<AIModelConfig[]>([]);
+  const [selectedModelId, setSelectedModelId] = useState<string>(() => {
+    try {
+      return localStorage.getItem('medical_ai_preferred_model') || 'gemini-2.0-flash';
+    } catch {
+      return 'gemini-2.0-flash';
+    }
+  });
+  const [autoFallbackEnabled, setAutoFallbackEnabled] = useState<boolean>(true);
+
   // Streaming Abort Controller Reference & Generation Ref
   const abortControllerRef = useRef<AbortController | null>(null);
   const isGeneratingRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Fetch available AI models on mount
+  useEffect(() => {
+    let isMounted = true;
+    aiService.getAvailableModels().then(({ models, defaultModelId }) => {
+      if (isMounted) {
+        setAvailableModels(models);
+        setSelectedModelId((prev) => {
+          if (models.some((m) => m.id === prev && m.isAvailable)) {
+            return prev;
+          }
+          return defaultModelId;
+        });
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Refresh active conversation's messages and documents
   const refreshCurrentChat = useCallback(() => {
@@ -93,6 +124,12 @@ export const MedicalChatLayout: React.FC<MedicalChatLayoutProps> = ({ onBack }) 
     if (currentConv) {
       setSelectedLanguage(currentConv.language);
       setSearchMode(currentConv.searchMode);
+      if (currentConv.selectedModelId) {
+        setSelectedModelId(currentConv.selectedModelId);
+      }
+      if (typeof currentConv.autoFallbackEnabled === 'boolean') {
+        setAutoFallbackEnabled(currentConv.autoFallbackEnabled);
+      }
     }
 
     const msgs = chatStore.getMessages(activeConversationId);
@@ -135,6 +172,28 @@ export const MedicalChatLayout: React.FC<MedicalChatLayoutProps> = ({ onBack }) 
     setShowScrollBottom(!isNearBottom);
   };
 
+  // Model Selection Handlers
+  const handleSelectModel = (modelId: string) => {
+    setSelectedModelId(modelId);
+    try {
+      localStorage.setItem('medical_ai_preferred_model', modelId);
+    } catch {}
+    if (activeConversationId) {
+      chatStore.updateConversation(activeConversationId, {
+        selectedModelId: modelId
+      });
+    }
+  };
+
+  const handleToggleAutoFallback = (enabled: boolean) => {
+    setAutoFallbackEnabled(enabled);
+    if (activeConversationId) {
+      chatStore.updateConversation(activeConversationId, {
+        autoFallbackEnabled: enabled
+      });
+    }
+  };
+
   // Create New Chat
   const handleNewChat = () => {
     const newConv = chatStore.createConversation(
@@ -143,6 +202,12 @@ export const MedicalChatLayout: React.FC<MedicalChatLayoutProps> = ({ onBack }) 
       selectedLanguage,
       searchMode
     );
+    if (selectedModelId) {
+      chatStore.updateConversation(newConv.id, {
+        selectedModelId,
+        autoFallbackEnabled
+      });
+    }
     setActiveConversationId(newConv.id);
     setIsSidebarOpen(false);
   };
@@ -399,6 +464,10 @@ export const MedicalChatLayout: React.FC<MedicalChatLayoutProps> = ({ onBack }) 
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
 
+    let actualModelUsed = selectedModelId;
+    let actualFallbackUsed = false;
+    let actualFallbackReason = '';
+
     try {
       const history = chatStore.getMessages(targetConvId);
       const streamGenerator = aiService.streamChatResponse({
@@ -410,7 +479,27 @@ export const MedicalChatLayout: React.FC<MedicalChatLayoutProps> = ({ onBack }) 
         activeDocuments: currentDocs,
         activeChunks: relevantDocChunks,
         attachments: base64Attachments,
-        abortSignal: abortController.signal
+        abortSignal: abortController.signal,
+        modelId: selectedModelId,
+        autoFallback: autoFallbackEnabled,
+        onMetadata: (meta) => {
+          if (meta.modelUsed) actualModelUsed = meta.modelUsed;
+          if (meta.fallbackUsed) actualFallbackUsed = true;
+          if (meta.fallbackReason) actualFallbackReason = meta.fallbackReason;
+
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMessageId
+                ? {
+                    ...msg,
+                    modelUsed: meta.modelUsed || msg.modelUsed,
+                    fallbackUsed: meta.fallbackUsed !== undefined ? meta.fallbackUsed : msg.fallbackUsed,
+                    fallbackReason: meta.fallbackReason || msg.fallbackReason
+                  }
+                : msg
+            )
+          );
+        }
       });
 
       let accumulatedText = '';
@@ -425,13 +514,15 @@ export const MedicalChatLayout: React.FC<MedicalChatLayoutProps> = ({ onBack }) 
         );
       }
 
-      // Finalize message in store
+      // Finalize message in store with actual model metadata
       const finalAssistantMsg: ChatMessage = {
         ...assistantPlaceholder,
         content: accumulatedText,
         isStreaming: false,
         status: 'complete',
-        modelUsed: 'Gemini 2.5 Flash / Clinical Engine'
+        modelUsed: actualModelUsed,
+        fallbackUsed: actualFallbackUsed,
+        fallbackReason: actualFallbackReason || undefined
       };
       chatStore.saveMessage(finalAssistantMsg);
 
@@ -557,6 +648,11 @@ export const MedicalChatLayout: React.FC<MedicalChatLayoutProps> = ({ onBack }) 
         <ChatHeader
           conversation={activeConversation}
           documents={documents}
+          models={availableModels}
+          selectedModelId={selectedModelId}
+          onSelectModel={handleSelectModel}
+          autoFallbackEnabled={autoFallbackEnabled}
+          onToggleAutoFallback={handleToggleAutoFallback}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
           onToggleDocPanel={() => setIsDocPanelOpen(true)}
           onOpenCompare={() => setIsCompareModalOpen(true)}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Conversation, ChatDocument } from '../../types/chat';
+import { Conversation, ChatDocument, AIModelConfig } from '../../types/chat';
 import { voiceService, VoiceSettings } from '../../services/voiceService';
+import { ModelSelector } from './ModelSelector';
 import {
   Menu,
   FileText,
@@ -21,6 +22,11 @@ import {
 interface ChatHeaderProps {
   conversation?: Conversation;
   documents: ChatDocument[];
+  models?: AIModelConfig[];
+  selectedModelId?: string;
+  onSelectModel?: (modelId: string) => void;
+  autoFallbackEnabled?: boolean;
+  onToggleAutoFallback?: (enabled: boolean) => void;
   onToggleSidebar: () => void;
   onToggleDocPanel: () => void;
   onOpenCompare: () => void;
@@ -34,6 +40,11 @@ interface ChatHeaderProps {
 export const ChatHeader: React.FC<ChatHeaderProps> = ({
   conversation,
   documents,
+  models = [],
+  selectedModelId = 'gemini-2.0-flash',
+  onSelectModel,
+  autoFallbackEnabled = true,
+  onToggleAutoFallback,
   onToggleSidebar,
   onToggleDocPanel,
   onOpenCompare,
@@ -157,8 +168,22 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
         )}
       </div>
 
-      {/* Right: New Chat + Documents + Compare + Settings */}
+      {/* Right: Model Selector + New Chat + Documents + Compare + Settings */}
       <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+        {/* Model Selector */}
+        {models.length > 0 && onSelectModel && (
+          <div className="flex-shrink-0">
+            <ModelSelector
+              models={models}
+              selectedModelId={selectedModelId}
+              onSelectModel={onSelectModel}
+              autoFallbackEnabled={autoFallbackEnabled}
+              onToggleAutoFallback={onToggleAutoFallback}
+              disabled={isGenerating}
+            />
+          </div>
+        )}
+
         {/* New Chat Button */}
         {onNewChat && (
           <button

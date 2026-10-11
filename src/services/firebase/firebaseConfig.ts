@@ -29,23 +29,23 @@ export function getFirebaseConfig(): FirebaseClientConfig {
       ? (process as any).env
       : ({} as Record<string, string>);
 
-  const getValid = (val: any, fallback: string) => {
-    if (!val || typeof val !== 'string') return fallback;
+  const getClean = (val: any): string => {
+    if (!val || typeof val !== 'string') return '';
     const clean = val.trim();
-    if (!clean || clean.includes('YOUR_FIREBASE') || clean.includes('your-app-id')) {
-      return fallback;
+    if (!clean || clean.includes('YOUR_FIREBASE') || clean.includes('your-app-id') || clean.includes('G-XXXXXXXXXX')) {
+      return '';
     }
     return clean;
   };
 
   return {
-    apiKey: getValid(env.VITE_FIREBASE_API_KEY, 'AIzaSyBptim7GduYiPxLH_qmD3bi5p2qgrHWa7w'),
-    authDomain: getValid(env.VITE_FIREBASE_AUTH_DOMAIN, 'medicalai-2b4a7.firebaseapp.com'),
-    projectId: getValid(env.VITE_FIREBASE_PROJECT_ID, 'medicalai-2b4a7'),
-    storageBucket: getValid(env.VITE_FIREBASE_STORAGE_BUCKET, 'medicalai-2b4a7.firebasestorage.app'),
-    messagingSenderId: getValid(env.VITE_FIREBASE_MESSAGING_SENDER_ID, '331178919212'),
-    appId: getValid(env.VITE_FIREBASE_APP_ID, '1:331178919212:web:68a8541091a1dd71b95889'),
-    measurementId: getValid(env.VITE_FIREBASE_MEASUREMENT_ID, 'G-H7TG75GTXZ')
+    apiKey: getClean(env.VITE_FIREBASE_API_KEY),
+    authDomain: getClean(env.VITE_FIREBASE_AUTH_DOMAIN),
+    projectId: getClean(env.VITE_FIREBASE_PROJECT_ID),
+    storageBucket: getClean(env.VITE_FIREBASE_STORAGE_BUCKET),
+    messagingSenderId: getClean(env.VITE_FIREBASE_MESSAGING_SENDER_ID),
+    appId: getClean(env.VITE_FIREBASE_APP_ID),
+    measurementId: getClean(env.VITE_FIREBASE_MEASUREMENT_ID)
   };
 }
 

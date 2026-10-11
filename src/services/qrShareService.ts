@@ -35,6 +35,28 @@ class QrShareService {
     }
   }
 
+  private lastSyncedPayload: Map<string, string> = new Map();
+
+  private syncRecordToServer(record: PatientShareRecord) {
+    if (typeof window === 'undefined') return;
+    try {
+      const payload = JSON.stringify(record);
+      // Skip network call if exact payload was already synced for this token
+      if (this.lastSyncedPayload.get(record.token) === payload) {
+        return;
+      }
+      this.lastSyncedPayload.set(record.token, payload);
+
+      fetch('/api/emergency/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload
+      }).catch(() => {});
+    } catch {
+      // ignore network errors
+    }
+  }
+
   /**
    * Generates a cryptographically strong, unique share token.
    */
@@ -102,6 +124,7 @@ class QrShareService {
 
     this.records.set(token, record);
     this.saveToStorage();
+    this.syncRecordToServer(record);
     return record;
   }
 
@@ -157,14 +180,26 @@ class QrShareService {
         !record.isRevoked &&
         new Date(record.expiresAt) > now
       ) {
-        // Sync latest profile changes
-        record.patientName = params.patientName;
-        record.bloodGroup = params.bloodGroup;
-        record.allergies = params.allergies;
-        record.emergencyContacts = params.emergencyContacts;
-        record.profileImageUrl = params.profileImageUrl;
-        record.importantMedicalNotes = params.importantMedicalNotes;
-        this.saveToStorage();
+        const hasDifferences =
+          record.patientName !== params.patientName ||
+          record.bloodGroup !== params.bloodGroup ||
+          (record.profileImageUrl || '') !== (params.profileImageUrl || '') ||
+          (record.importantMedicalNotes || '') !== (params.importantMedicalNotes || '') ||
+          (record.dateOfBirth || '') !== (params.dateOfBirth || '') ||
+          JSON.stringify(record.allergies) !== JSON.stringify(params.allergies) ||
+          JSON.stringify(record.emergencyContacts) !== JSON.stringify(params.emergencyContacts);
+
+        if (hasDifferences) {
+          record.patientName = params.patientName;
+          record.bloodGroup = params.bloodGroup;
+          record.allergies = params.allergies;
+          record.emergencyContacts = params.emergencyContacts;
+          record.profileImageUrl = params.profileImageUrl;
+          record.importantMedicalNotes = params.importantMedicalNotes;
+          record.dateOfBirth = params.dateOfBirth;
+          this.saveToStorage();
+          this.syncRecordToServer(record);
+        }
         return record;
       }
     }
@@ -174,6 +209,47 @@ class QrShareService {
       ...params,
       durationMinutes: 1440
     });
+  }
+
+  /**
+   * Asynchronously validates and inspects a token across network devices.
+   * Supports forceRefresh to bypass stale local cache and fetch live updates from server.
+   */
+  public async validateAndGetRecordAsync(token: string, forceRefresh = false): Promise<{
+    isValid: boolean;
+    reason?: 'expired' | 'revoked' | 'not_found';
+    record?: PatientShareRecord;
+  }> {
+    // 1. Try local storage if not forcing refresh
+    if (!forceRefresh) {
+      const localRes = this.validateAndGetRecord(token);
+      if (localRes.isValid && localRes.record) {
+        return localRes;
+      }
+    }
+
+    // 2. Fetch from authoritative backend
+    if (typeof window !== 'undefined') {
+      try {
+        const res = await fetch(`/api/emergency/share/${encodeURIComponent(token)}?t=${Date.now()}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.success && data?.record) {
+            const serverRecord: PatientShareRecord = data.record;
+            this.records.set(serverRecord.token, serverRecord);
+            this.saveToStorage();
+            return this.validateAndGetRecord(serverRecord.token);
+          }
+        } else if (res.status === 410) {
+          const data = await res.json().catch(() => ({}));
+          return { isValid: false, reason: data.reason || 'expired' };
+        }
+      } catch (err) {
+        console.warn('[QR] Server lookup failed:', err);
+      }
+    }
+
+    return localRes;
   }
 
   /**

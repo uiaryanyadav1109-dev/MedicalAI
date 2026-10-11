@@ -30,23 +30,49 @@ export const QrScanSharePage: React.FC<QrScanSharePageProps> = ({
   const [record, setRecord] = useState<PatientShareRecord | null>(null);
   const [errorStatus, setErrorStatus] = useState<'expired' | 'revoked' | 'not_found' | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date>(new Date());
 
   useEffect(() => {
-    setIsLoading(true);
-    // Simulate slight token verification delay for authentic feedback
-    const timer = setTimeout(() => {
-      const res = qrShareService.validateAndGetRecord(token);
-      if (res.isValid && res.record) {
-        setRecord(res.record);
-        setErrorStatus(null);
-      } else {
-        setRecord(null);
-        setErrorStatus(res.reason || 'not_found');
-      }
-      setIsLoading(false);
-    }, 250);
+    let isCancelled = false;
 
-    return () => clearTimeout(timer);
+    const fetchLatestRecord = (force = false) => {
+      qrShareService.validateAndGetRecordAsync(token, force).then((res) => {
+        if (isCancelled) return;
+        if (res.isValid && res.record) {
+          setRecord(res.record);
+          setErrorStatus(null);
+          setLastSyncedAt(new Date());
+        } else {
+          setRecord(null);
+          setErrorStatus(res.reason || 'not_found');
+        }
+        setIsLoading(false);
+      });
+    };
+
+    // Initial load
+    fetchLatestRecord(true);
+
+    // Live Auto-Sync: Poll every 3 seconds so modifications from the main website reflect immediately
+    const pollInterval = setInterval(() => {
+      fetchLatestRecord(true);
+    }, 3000);
+
+    // Re-verify immediately on window focus / visibility change
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchLatestRecord(true);
+      }
+    };
+    window.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleVisibility);
+
+    return () => {
+      isCancelled = true;
+      clearInterval(pollInterval);
+      window.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleVisibility);
+    };
   }, [token]);
 
   if (isLoading) {
@@ -134,9 +160,15 @@ export const QrScanSharePage: React.FC<QrScanSharePageProps> = ({
             </div>
           </div>
 
-          <span className="text-[10px] font-mono text-slate-400">
-            Expires: {new Date(record.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </span>
+          <div className="flex flex-col items-end gap-0.5">
+            <span className="flex items-center gap-1.5 text-[9px] font-mono text-emerald-400 font-semibold uppercase tracking-wider">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping inline-block" />
+              Live Sync Active
+            </span>
+            <span className="text-[10px] font-mono text-slate-400">
+              Expires: {new Date(record.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
         </div>
 
         {/* Content Body */}

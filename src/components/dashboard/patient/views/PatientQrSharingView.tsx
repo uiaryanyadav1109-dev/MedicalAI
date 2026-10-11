@@ -3,7 +3,7 @@ import { RoutePath, PatientShareRecord } from '../../../../types';
 import { useAuth } from '../../../../context/AuthContext';
 import { qrShareService } from '../../../../services/qrShareService';
 import { RealQrCode } from '../../../common/RealQrCode';
-import { getScannableOrigin } from '../../../../utils/qrCodeGenerator';
+import { getScannableOrigin, initScannableOrigin } from '../../../../utils/qrCodeGenerator';
 import { ProfileAvatar } from '../../../common/ProfileAvatar';
 import {
   QrCode,
@@ -51,7 +51,14 @@ export const PatientQrSharingView: React.FC<{ onNavigate: (route: RoutePath) => 
     setShareRecord(record);
   }, [user, patientName, patientIdCode]);
 
-  const origin = getScannableOrigin();
+  const [origin, setOrigin] = useState<string>(() => getScannableOrigin());
+
+  useEffect(() => {
+    initScannableOrigin().then((resolved) => {
+      if (resolved) setOrigin(resolved);
+    });
+  }, []);
+
   const shareableUrl = shareRecord
     ? `${origin}/share/${shareRecord.token}`
     : `${origin}/share/loading`;

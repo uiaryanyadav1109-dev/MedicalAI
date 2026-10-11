@@ -43,6 +43,23 @@ export type ChatRole = 'user' | 'assistant' | 'system';
 
 export type SearchMode = 'document' | 'knowledge';
 
+export type AIProviderId = 'google' | 'openai' | 'anthropic' | 'groq' | 'clinical-engine';
+
+export interface AIModelConfig {
+  id: string;
+  name: string;
+  provider: AIProviderId;
+  providerLabel: string;
+  description: string;
+  badge?: string;
+  contextWindow: string;
+  isAvailable: boolean;
+  isDefault?: boolean;
+  supportsVision: boolean;
+  supportsStreaming: boolean;
+  unavailableReason?: string;
+}
+
 export interface Citation {
   id: string;
   documentId: string;
@@ -75,6 +92,8 @@ export interface ChatMessage {
   status?: 'sending' | 'streaming' | 'complete' | 'error';
   error?: string;
   modelUsed?: string;
+  fallbackUsed?: boolean;
+  fallbackReason?: string;
   searchMode?: SearchMode;
   metadata?: {
     triageCategory?: string;
@@ -82,6 +101,8 @@ export interface ChatMessage {
     comparisonMode?: boolean;
     referencedDocs?: string[];
     feedback?: 'like' | 'dislike';
+    tokenCount?: number;
+    latencyMs?: number;
   };
 }
 
@@ -140,6 +161,8 @@ export interface Conversation {
   searchMode: SearchMode;
   documentIds: string[];
   summary?: string;
+  selectedModelId?: string;
+  autoFallbackEnabled?: boolean;
 }
 
 export interface DocumentComparisonResult {
