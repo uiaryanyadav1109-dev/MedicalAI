@@ -51,15 +51,28 @@ export interface ModelDispatchOptions {
 export const SUPPORTED_MODELS: AIModelConfig[] = [
   // --- Google Gemini ---
   {
+    id: 'gemini-3.8-flash',
+    name: 'Gemini 3.8 Flash',
+    provider: 'google',
+    providerLabel: 'Google DeepMind',
+    description: 'Next-generation clinical reasoning, multimodal medical document analysis.',
+    badge: 'Recommended',
+    contextWindow: '1M tokens',
+    isAvailable: false,
+    isDefault: true,
+    supportsVision: true,
+    supportsStreaming: true
+  },
+  {
     id: 'gemini-2.5-flash',
     name: 'Gemini 2.5 Flash',
     provider: 'google',
     providerLabel: 'Google DeepMind',
     description: 'High-speed clinical reasoning, multimodal medical document analysis.',
-    badge: 'Recommended',
+    badge: 'Fast',
     contextWindow: '1M tokens',
     isAvailable: false,
-    isDefault: true,
+    isDefault: false,
     supportsVision: true,
     supportsStreaming: true
   },
@@ -267,6 +280,7 @@ export function getDefaultModelId(): string {
   const available = models.filter((m) => m.isAvailable);
 
   const preferred = [
+    'gemini-3.8-flash',
     'gemini-2.5-flash',
     'gemini-1.5-flash',
     'gemini-2.0-flash',
@@ -343,7 +357,7 @@ async function streamGemini(
     }
   }
 
-  const timeoutMs = 12000;
+  const timeoutMs = 35000;
   const timeoutPromise = new Promise<never>((_, reject) =>
     setTimeout(() => reject(new Error(`Gemini (${modelId}) request timed out after ${timeoutMs}ms`)), timeoutMs)
   );

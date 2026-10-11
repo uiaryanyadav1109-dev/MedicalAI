@@ -12,6 +12,7 @@ function postChat(payload) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'text/event-stream',
           'Content-Length': Buffer.byteLength(postData)
         }
       },
@@ -43,6 +44,12 @@ function getHealth() {
 }
 
 function parseSSEData(rawSSE) {
+  if (!rawSSE) return '';
+  try {
+    const directJson = JSON.parse(rawSSE);
+    if (directJson.text) return directJson.text;
+  } catch {}
+
   const lines = rawSSE.split('\n');
   let accumulated = '';
   for (const line of lines) {

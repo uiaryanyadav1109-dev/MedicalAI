@@ -247,7 +247,7 @@ class QrShareService {
       patientIdCode: 'MAI-80429',
       bloodGroup: 'O+',
       allergies: ['Penicillin', 'Peanuts'],
-      emergencyContacts: [{ name: 'Priya Sharma', relationship: 'Spouse', phone: '+91 98765 43210', isPrimary: true }],
+      emergencyContacts: [{ id: 'ec-default', name: 'Priya Sharma', relationship: 'Spouse', phone: '+91 98765 43210', isPrimary: true, isActive: true }],
       durationMinutes,
       revokeExistingForPatient: true,
     });
@@ -263,7 +263,7 @@ class QrShareService {
       patientIdCode: 'MAI-80429',
       bloodGroup: 'O+',
       allergies: ['Penicillin', 'Peanuts'],
-      emergencyContacts: [{ name: 'Priya Sharma', relationship: 'Spouse', phone: '+91 98765 43210', isPrimary: true }],
+      emergencyContacts: [{ id: 'ec-default', name: 'Priya Sharma', relationship: 'Spouse', phone: '+91 98765 43210', isPrimary: true, isActive: true }],
     });
   }
 
@@ -276,12 +276,10 @@ class QrShareService {
     reason?: 'expired' | 'revoked' | 'not_found';
     record?: PatientShareRecord;
   }> {
+    const localRes = this.validateAndGetRecord(token);
     // 1. Try local storage if not forcing refresh
-    if (!forceRefresh) {
-      const localRes = this.validateAndGetRecord(token);
-      if (localRes.isValid && localRes.record) {
-        return localRes;
-      }
+    if (!forceRefresh && localRes.isValid && localRes.record) {
+      return localRes;
     }
 
     // 2. Fetch from authoritative backend
@@ -441,7 +439,8 @@ class QrShareService {
    * 2. Submits an access request with mandatory reason selection, required explanation, and requested scopes.
    */
   public async submitAccessRequestAsync(params: {
-    qrToken: string;
+    qrToken?: string;
+    token?: string;
     patientId?: string;
     requesterId: string;
     requesterName: string;
@@ -451,7 +450,8 @@ class QrShareService {
     reason: QrAccessReasonKey;
     reasonLabel?: string;
     explanation: string;
-    requestedScopes: QrAccessScope;
+    requestedScopes?: QrAccessScope;
+    scopes?: QrAccessScope;
     isEmergencyBreakGlass?: boolean;
     breakGlassConfirmed?: boolean;
   }): Promise<{
@@ -460,15 +460,32 @@ class QrShareService {
     error?: string;
     message?: string;
   }> {
+    const effectiveToken = params.qrToken || params.token || '';
+    const effectiveScopes = params.requestedScopes || params.scopes || {
+      bloodGroup: true,
+      allergies: true,
+      emergencyContacts: false,
+      emergencyNotes: false,
+      vitals: false,
+      medications: false,
+      clinicalNotes: false,
+      labReports: false
+    };
+    const normalizedParams = {
+      ...params,
+      qrToken: effectiveToken,
+      requestedScopes: effectiveScopes
+    };
+
     // Client-side pre-flight validation
-    if (!params.reason) {
+    if (!normalizedParams.reason) {
       return { success: false, error: 'A valid reason for access is strictly mandatory.' };
     }
-    const trimmedExplanation = (params.explanation || '').trim();
-    if (params.reason === 'other' && trimmedExplanation.length < 5) {
+    const trimmedExplanation = (normalizedParams.explanation || '').trim();
+    if (normalizedParams.reason === 'other' && trimmedExplanation.length < 5) {
       return { success: false, error: 'A detailed written explanation (at least 5 characters) is required when selecting "Other".' };
     }
-    if (params.isEmergencyBreakGlass && trimmedExplanation.length < 8) {
+    if (normalizedParams.isEmergencyBreakGlass && trimmedExplanation.length < 8) {
       return { success: false, error: 'A clinical justification is required for emergency break-glass access.' };
     }
 
@@ -477,7 +494,7 @@ class QrShareService {
         const res = await fetch('/api/emergency/access-request', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(params)
+          body: JSON.stringify(normalizedParams)
         });
         const data = await res.json();
         if (res.ok && data?.success && data?.request) {
@@ -493,38 +510,38 @@ class QrShareService {
     }
 
     // Local in-memory fallback
-    const targetRec = this.records.get(params.qrToken);
-    const targetPatientId = params.patientId || targetRec?.patientId || 'pat-1';
+    const targetRec = this.records.get(normalizedParams.qrToken);
+    const targetPatientId = normalizedParams.patientId || targetRec?.patientId || 'pat-1';
     const now = new Date();
     const requestId = `req-${now.getTime()}-${Math.random().toString(36).substring(2, 7)}`;
 
-    if (params.isEmergencyBreakGlass) {
+    if (normalizedParams.isEmergencyBreakGlass) {
       const emergencyRoles = ['doctor', 'clinician', 'paramedic', 'physician'];
-      if (!emergencyRoles.some((r) => params.requesterRole.toLowerCase().includes(r))) {
+      if (!emergencyRoles.some((r) => normalizedParams.requesterRole.toLowerCase().includes(r))) {
         return {
           success: false,
           error: 'Emergency break-glass access is strictly restricted to licensed clinicians and authorized emergency personnel.'
         };
       }
-      if (params.breakGlassConfirmed === false) {
+      if (normalizedParams.breakGlassConfirmed === false) {
         return { success: false, error: 'Explicit confirmation of clinical emergency is required.' };
       }
 
       const emergencyRequest: QrAccessRequest = {
         id: requestId,
-        qrToken: params.qrToken,
+        qrToken: normalizedParams.qrToken,
         patientId: targetPatientId,
         patientName: targetRec?.patientName || 'Aryan Yadav',
         patientIdCode: targetRec?.patientIdCode || 'MAI-80429',
-        requesterId: params.requesterId,
-        requesterName: params.requesterName,
-        requesterRole: params.requesterRole,
-        requesterEmail: params.requesterEmail,
-        requesterOrganization: params.requesterOrganization || 'Emergency Services',
-        reason: params.reason,
-        reasonLabel: params.reasonLabel || 'Emergency Medical Assistance',
+        requesterId: normalizedParams.requesterId,
+        requesterName: normalizedParams.requesterName,
+        requesterRole: normalizedParams.requesterRole,
+        requesterEmail: normalizedParams.requesterEmail,
+        requesterOrganization: normalizedParams.requesterOrganization || 'Emergency Services',
+        reason: normalizedParams.reason,
+        reasonLabel: normalizedParams.reasonLabel || 'Emergency Medical Assistance',
         explanation: trimmedExplanation,
-        requestedScopes: params.requestedScopes,
+        requestedScopes: normalizedParams.requestedScopes,
         approvedScopes: {
           bloodGroup: true,
           allergies: true,
@@ -550,11 +567,11 @@ class QrShareService {
         id: `audit-${now.getTime()}`,
         timestamp: now.toISOString(),
         requestId,
-        qrToken: params.qrToken,
+        qrToken: normalizedParams.qrToken,
         patientId: targetPatientId,
-        requesterId: params.requesterId,
-        requesterRole: params.requesterRole,
-        requesterName: params.requesterName,
+        requesterId: normalizedParams.requesterId,
+        requesterRole: normalizedParams.requesterRole,
+        requesterName: normalizedParams.requesterName,
         action: 'EMERGENCY_BREAK_GLASS_INVOKED',
         outcome: 'SUCCESS',
         details: `Emergency break-glass invoked: "${trimmedExplanation}"`
@@ -565,19 +582,19 @@ class QrShareService {
 
     const standardRequest: QrAccessRequest = {
       id: requestId,
-      qrToken: params.qrToken,
+      qrToken: normalizedParams.qrToken,
       patientId: targetPatientId,
       patientName: targetRec?.patientName || 'Aryan Yadav',
       patientIdCode: targetRec?.patientIdCode || 'MAI-80429',
-      requesterId: params.requesterId,
-      requesterName: params.requesterName,
-      requesterRole: params.requesterRole,
-      requesterEmail: params.requesterEmail,
-      requesterOrganization: params.requesterOrganization,
-      reason: params.reason,
-      reasonLabel: params.reasonLabel || 'Clinical Care',
+      requesterId: normalizedParams.requesterId,
+      requesterName: normalizedParams.requesterName,
+      requesterRole: normalizedParams.requesterRole,
+      requesterEmail: normalizedParams.requesterEmail,
+      requesterOrganization: normalizedParams.requesterOrganization,
+      reason: normalizedParams.reason,
+      reasonLabel: normalizedParams.reasonLabel || 'Clinical Care',
       explanation: trimmedExplanation,
-      requestedScopes: params.requestedScopes,
+      requestedScopes: normalizedParams.requestedScopes,
       status: 'pending',
       isEmergencyBreakGlass: false,
       requiresPatientConsent: true,

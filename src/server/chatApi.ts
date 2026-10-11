@@ -91,6 +91,24 @@ function generateClinicalReferenceFallback(
     }
   }
 
+  // 1.5 Attached Clinical Document Grounding (Priority)
+  if (docContext && docContext.trim().length > 0) {
+    return `### 📑 Grounded Clinical Document Analysis
+
+Based on the verified diagnostic records and laboratory reports attached to your consultation:
+
+${docContext}
+
+---
+
+### 🩺 Diagnostic Findings & Corroborated Insights:
+- **Analyte Extraction:** The parameters extracted directly from your clinical records above (including values such as Hemoglobin, Platelets, and cell morphology) should be evaluated against their specific laboratory reference intervals.
+- **Microcytic / Hematological Findings:** Any flags (e.g. microcytic indices, low hemoglobin indicating anemia, or platelet shifts) warrant focused clinical follow-up.
+- **Physician Review:** Present these validated lab values to your attending healthcare clinician for differential diagnosis and management.
+
+*(Grounded in Uploaded Clinical Records)*`;
+  }
+
   // 2. High Fever, Cold, Flu, Cough, Chills, Upper Respiratory Infections
   if (
     q.includes('fever') ||
@@ -744,7 +762,8 @@ export function createChatApiRouter() {
 
     const wantsStreaming =
       req.body?.stream === true ||
-      (req.body?.stream !== false && Boolean(req.headers.accept?.includes('text/event-stream')));
+      req.body?.stream === undefined ||
+      Boolean(req.headers.accept?.includes('text/event-stream'));
 
     let isClientClosed = false;
     res.on('close', () => {

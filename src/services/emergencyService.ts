@@ -404,12 +404,12 @@ class EmergencyService {
       locationSource = locResult.source || 'gps';
     } else {
       const fallbackAddr = options?.fallbackAddress || DEFAULT_CLINICAL_FALLBACK.address;
-      resolvedLat = DEFAULT_CLINICAL_FALLBACK.latitude;
-      resolvedLng = DEFAULT_CLINICAL_FALLBACK.longitude;
-      resolvedAccuracy = DEFAULT_CLINICAL_FALLBACK.accuracy;
+      resolvedLat = undefined;
+      resolvedLng = undefined;
+      resolvedAccuracy = undefined;
       locationSource = 'profile_fallback';
       addressDescription = fallbackAddr;
-      mapLink = this.generateClickableMapLink(resolvedLat, resolvedLng);
+      mapLink = this.generateMapLinkFromQuery(fallbackAddr);
     }
 
     // 2. Dispatch to backend endpoint (/api/emergency/sos) for database recording & notification check
