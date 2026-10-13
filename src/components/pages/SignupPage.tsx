@@ -19,6 +19,12 @@ import {
   calculatePasswordStrength
 } from '../../services/authService';
 import { formatIndianPhoneNumber } from '../../utils/phoneUtils';
+import { ALL_COUNTRIES, COMMON_NATIONALITIES, POPULAR_COUNTRIES } from '../../data/countries';
+import {
+  getCountryFieldConfig,
+  getStatesForCountry,
+  getDistrictsForState
+} from '../../data/geographicData';
 import {
   User,
   Mail,
@@ -82,97 +88,7 @@ const GENDER_OPTIONS = [
 ];
 const CONTACT_METHODS = ['Email', 'Phone Call', 'SMS', 'WhatsApp'] as const;
 
-const INDIAN_STATES = [
-  'Andhra Pradesh',
-  'Arunachal Pradesh',
-  'Assam',
-  'Bihar',
-  'Chhattisgarh',
-  'Delhi (NCT)',
-  'Goa',
-  'Gujarat',
-  'Haryana',
-  'Himachal Pradesh',
-  'Jharkhand',
-  'Karnataka',
-  'Kerala',
-  'Madhya Pradesh',
-  'Maharashtra',
-  'Manipur',
-  'Meghalaya',
-  'Mizoram',
-  'Nagaland',
-  'Odisha',
-  'Punjab',
-  'Rajasthan',
-  'Sikkim',
-  'Tamil Nadu',
-  'Telangana',
-  'Tripura',
-  'Uttar Pradesh',
-  'Uttarakhand',
-  'West Bengal',
-  'Jammu & Kashmir',
-  'Ladakh',
-  'Chandigarh',
-  'Puducherry'
-];
-
-const POPULAR_STATES_QUICK = [
-  'Maharashtra',
-  'Delhi (NCT)',
-  'Karnataka',
-  'Tamil Nadu',
-  'Telangana',
-  'Gujarat',
-  'Uttar Pradesh',
-  'West Bengal'
-];
-
-const POPULAR_DISTRICTS_BY_STATE: Record<string, string[]> = {
-  Maharashtra: ['Mumbai City', 'Mumbai Suburban', 'Pune', 'Thane', 'Nagpur', 'Nashik', 'Chhatrapati Sambhajinagar', 'Kolhapur', 'Solapur', 'Raigad', 'Palghar', 'Jalgaon'],
-  'Delhi (NCT)': ['New Delhi', 'Central Delhi', 'North Delhi', 'South Delhi', 'West Delhi', 'East Delhi', 'North West Delhi', 'South West Delhi'],
-  Karnataka: ['Bengaluru Urban', 'Bengaluru Rural', 'Mysuru', 'Dakshina Kannada', 'Dharwad', 'Belagavi', 'Kalaburagi', 'Udupi', 'Tumakuru'],
-  'Tamil Nadu': ['Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem', 'Chengalpattu', 'Kanchipuram', 'Vellore', 'Tirunelveli'],
-  Telangana: ['Hyderabad', 'Rangareddy', 'Medchal-Malkajgiri', 'Warangal', 'Sangareddy', 'Nizamabad', 'Karimnagar'],
-  Gujarat: ['Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Bhavnagar', 'Gandhinagar', 'Jamnagar', 'Kutch'],
-  'Uttar Pradesh': ['Lucknow', 'Kanpur Nagar', 'Gautam Buddha Nagar (Noida)', 'Ghaziabad', 'Varanasi', 'Prayagraj', 'Agra', 'Meerut', 'Bareilly'],
-  'West Bengal': ['Kolkata', 'North 24 Parganas', 'South 24 Parganas', 'Howrah', 'Hooghly', 'Paschim Bardhaman', 'Darjeeling', 'Nadia'],
-  Rajasthan: ['Jaipur', 'Jodhpur', 'Udaipur', 'Kota', 'Bikaner', 'Ajmer', 'Alwar'],
-  Kerala: ['Ernakulam', 'Thiruvananthapuram', 'Kozhikode', 'Thrissur', 'Malappuram', 'Kollam', 'Palakkad'],
-  Punjab: ['Amritsar', 'Ludhiana', 'Jalandhar', 'SAS Nagar (Mohali)', 'Patiala', 'Bathinda'],
-  Bihar: ['Patna', 'Gaya', 'Muzaffarpur', 'Bhagalpur', 'Darbhanga', 'Purnia'],
-  'Madhya Pradesh': ['Bhopal', 'Indore', 'Jabalpur', 'Gwalior', 'Ujjain'],
-  Haryana: ['Gurugram', 'Faridabad', 'Panipat', 'Ambala', 'Karnal', 'Sonipat'],
-  Odisha: ['Khordha (Bhubaneswar)', 'Cuttack', 'Sundargarh', 'Puri', 'Ganjam'],
-  'Andhra Pradesh': ['Visakhapatnam', 'NTR (Vijayawada)', 'Guntur', 'Tirupati', 'Kurnool'],
-  Assam: ['Kamrup Metropolitan (Guwahati)', 'Dibrugarh', 'Cachar', 'Jorhat'],
-  Jharkhand: ['Ranchi', 'East Singhbhum (Jamshedpur)', 'Dhanbad', 'Bokaro']
-};
-
-const TOP_DISTRICTS_DEFAULT = [
-  'Mumbai City',
-  'Mumbai Suburban',
-  'New Delhi',
-  'Bengaluru Urban',
-  'Hyderabad',
-  'Pune',
-  'Chennai',
-  'Ahmedabad',
-  'Kolkata',
-  'Lucknow'
-];
-
-const POPULAR_COUNTRIES_LIST = [
-  'India',
-  'United States',
-  'United Kingdom',
-  'United Arab Emirates',
-  'Canada',
-  'Australia',
-  'Singapore',
-  'Germany'
-];
+const POPULAR_COUNTRIES_LIST = ALL_COUNTRIES;
 
 const SUPPORTED_LANGUAGES = [
   { code: 'en', name: 'English' },
@@ -306,20 +222,54 @@ export const SignupPage: React.FC<SignupPageProps> = ({
   const [stateName, setStateName] = useState('');
   const [postalCode, setPostalCode] = useState('');
   const [addressCountry, setAddressCountry] = useState('India');
+  const [isCustomState, setIsCustomState] = useState(false);
+  const [isCustomCity, setIsCustomCity] = useState(false);
 
-  // Dynamic district choices based on selected state
-  const availableDistrictOptions = useMemo(() => {
-    if (stateName && POPULAR_DISTRICTS_BY_STATE[stateName]) {
-      return POPULAR_DISTRICTS_BY_STATE[stateName];
-    }
-    const all = new Set<string>(TOP_DISTRICTS_DEFAULT);
-    Object.values(POPULAR_DISTRICTS_BY_STATE).forEach((districts) => {
-      districts.forEach((d) => all.add(d));
-    });
-    return Array.from(all);
-  }, [stateName]);
+  // Dynamic country field configuration (labels, placeholders, formatting)
+  const countryFieldConfig = useMemo(() => getCountryFieldConfig(addressCountry), [addressCountry]);
+
+  // States / Provinces for the selected country
+  const availableStates = useMemo(() => getStatesForCountry(addressCountry), [addressCountry]);
+
+  // Districts / Cities for the selected country and state
+  const availableDistrictOptions = useMemo(
+    () => getDistrictsForState(addressCountry, stateName),
+    [addressCountry, stateName]
+  );
 
   const availableCityOptions = availableDistrictOptions;
+
+  const handleCountryChange = (newCountry: string) => {
+    setAddressCountry(newCountry);
+    setStateName('');
+    setCity('');
+    setIsCustomState(false);
+    setIsCustomCity(false);
+  };
+
+  const handleStateChange = (val: string) => {
+    if (val === '__custom__') {
+      setIsCustomState(true);
+      setStateName('');
+      setCity('');
+      setIsCustomCity(false);
+    } else {
+      setIsCustomState(false);
+      setStateName(val);
+      setCity('');
+      setIsCustomCity(false);
+    }
+  };
+
+  const handleCityChange = (val: string) => {
+    if (val === '__custom__') {
+      setIsCustomCity(true);
+      setCity('');
+    } else {
+      setIsCustomCity(false);
+      setCity(val);
+    }
+  };
 
   // STEP 4: Emergency Contacts
   const [emergencyContacts, setEmergencyContacts] = useState<EmergencyContact[]>([
@@ -1510,14 +1460,29 @@ export const SignupPage: React.FC<SignupPageProps> = ({
                     </label>
                     <select
                       value={country}
-                      onChange={(e) => setCountry(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setCountry(val);
+                        if (addressCountry === 'India' || !addressCountry) {
+                          handleCountryChange(val);
+                        }
+                      }}
                       className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
                     >
-                      {POPULAR_COUNTRIES_LIST.map((cntry) => (
-                        <option key={cntry} value={cntry}>
-                          {cntry}
-                        </option>
-                      ))}
+                      <optgroup label="Popular Countries">
+                        {POPULAR_COUNTRIES.map((cntry) => (
+                          <option key={`pop2-${cntry}`} value={cntry}>
+                            {cntry}
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="All Countries">
+                        {ALL_COUNTRIES.map((cntry) => (
+                          <option key={`all2-${cntry}`} value={cntry}>
+                            {cntry}
+                          </option>
+                        ))}
+                      </optgroup>
                     </select>
                   </div>
 
@@ -1534,14 +1499,9 @@ export const SignupPage: React.FC<SignupPageProps> = ({
                       className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
                     />
                     <datalist id="nationality-options">
-                      <option value="Indian" />
-                      <option value="American" />
-                      <option value="British" />
-                      <option value="Canadian" />
-                      <option value="Australian" />
-                      <option value="Emirati" />
-                      <option value="Singaporean" />
-                      <option value="German" />
+                      {COMMON_NATIONALITIES.map((nat) => (
+                        <option key={nat} value={nat} />
+                      ))}
                     </datalist>
                   </div>
                 </div>
@@ -1676,160 +1636,177 @@ export const SignupPage: React.FC<SignupPageProps> = ({
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    {/* District Selection */}
+                    {/* 1. Country Selection */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                          District
+                          Country
+                        </label>
+                      </div>
+                      <select
+                        value={addressCountry}
+                        onChange={(e) => handleCountryChange(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                      >
+                        <optgroup label="Popular Countries">
+                          {POPULAR_COUNTRIES.map((cntry) => (
+                            <option key={`pop-${cntry}`} value={cntry}>
+                              {cntry}
+                            </option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="All Countries">
+                          {ALL_COUNTRIES.map((cntry) => (
+                            <option key={`all-${cntry}`} value={cntry}>
+                              {cntry}
+                            </option>
+                          ))}
+                        </optgroup>
+                      </select>
+                    </div>
+
+                    {/* 2. State / Province Selection */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">
+                          {countryFieldConfig.stateLabel}
+                        </label>
+                        {stateName && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setStateName('');
+                              setCity('');
+                            }}
+                            className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline cursor-pointer shrink-0"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                      <div className="relative">
+                        {availableStates.length > 0 && !isCustomState ? (
+                          <select
+                            value={stateName}
+                            onChange={(e) => handleStateChange(e.target.value)}
+                            className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                          >
+                            <option value="">Select {countryFieldConfig.stateLabel}</option>
+                            {availableStates.map((st) => (
+                              <option key={st} value={st}>
+                                {st}
+                              </option>
+                            ))}
+                            <option value="__custom__">✍️ Other / Not Listed...</option>
+                          </select>
+                        ) : (
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={stateName}
+                              onChange={(e) => setStateName(e.target.value)}
+                              placeholder={`Enter ${countryFieldConfig.stateLabel}`}
+                              className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                            />
+                            {availableStates.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsCustomState(false);
+                                  setStateName('');
+                                }}
+                                className="absolute right-2 top-2.5 text-[10px] text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                              >
+                                List
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 3. District / City Selection */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">
+                          {countryFieldConfig.districtLabel}
                         </label>
                         {city && (
                           <button
                             type="button"
                             onClick={() => setCity('')}
-                            className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                            className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline cursor-pointer shrink-0"
                           >
                             Clear
                           </button>
                         )}
                       </div>
                       <div className="relative">
-                        <input
-                          type="text"
-                          list="district-options"
-                          value={city}
-                          onChange={(e) => setCity(e.target.value)}
-                          placeholder="e.g. Mumbai / Pune"
-                          className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
-                        />
-                        <datalist id="district-options">
-                          {availableDistrictOptions.map((d) => (
-                            <option key={d} value={d} />
-                          ))}
-                        </datalist>
+                        {availableDistrictOptions.length > 0 && !isCustomCity ? (
+                          <select
+                            value={city}
+                            onChange={(e) => handleCityChange(e.target.value)}
+                            className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                          >
+                            <option value="">
+                              {stateName
+                                ? `Select ${countryFieldConfig.districtLabel}`
+                                : `Select ${countryFieldConfig.districtLabel} (or pick state)`}
+                            </option>
+                            {availableDistrictOptions.map((d) => (
+                              <option key={d} value={d}>
+                                {d}
+                              </option>
+                            ))}
+                            <option value="__custom__">✍️ Other / Type Custom...</option>
+                          </select>
+                        ) : (
+                          <div className="relative">
+                            <input
+                              type="text"
+                              list="district-options"
+                              value={city}
+                              onChange={(e) => setCity(e.target.value)}
+                              placeholder={countryFieldConfig.districtPlaceholder}
+                              className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                            />
+                            {availableDistrictOptions.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsCustomCity(false);
+                                  setCity('');
+                                }}
+                                className="absolute right-2 top-2.5 text-[10px] text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                              >
+                                List
+                              </button>
+                            )}
+                            <datalist id="district-options">
+                              {availableDistrictOptions.map((d) => (
+                                <option key={d} value={d} />
+                              ))}
+                            </datalist>
+                          </div>
+                        )}
                       </div>
                     </div>
 
-                    {/* State / Province Selection */}
+                    {/* 4. Postal / PIN Code */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                          State / Province
+                        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">
+                          {countryFieldConfig.postalCodeLabel}
                         </label>
-                        {stateName && (
-                          <button
-                            type="button"
-                            onClick={() => setStateName('')}
-                            className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
-                          >
-                            Clear
-                          </button>
-                        )}
                       </div>
-                      <div className="relative">
-                        <select
-                          value={stateName}
-                          onChange={(e) => setStateName(e.target.value)}
-                          className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
-                        >
-                          <option value="">Select State / Province</option>
-                          {INDIAN_STATES.map((st) => (
-                            <option key={st} value={st}>
-                              {st}
-                            </option>
-                          ))}
-                          <option value="Other / International">Other / International</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Postal / PIN Code */}
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                        Postal / PIN Code
-                      </label>
                       <input
                         type="text"
                         value={postalCode}
                         onChange={(e) => setPostalCode(e.target.value)}
-                        placeholder="e.g. 400001"
-                        maxLength={10}
+                        placeholder={countryFieldConfig.postalCodePlaceholder}
+                        maxLength={12}
                         className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
                       />
-                    </div>
-
-                    {/* Country Selection */}
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                        Country
-                      </label>
-                      <select
-                        value={addressCountry}
-                        onChange={(e) => setAddressCountry(e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
-                      >
-                        {POPULAR_COUNTRIES_LIST.map((cntry) => (
-                          <option key={cntry} value={cntry}>
-                            {cntry}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Easy-Choice Preset Pills */}
-                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/80 dark:border-slate-700/80 space-y-2.5">
-                    {/* Quick States */}
-                    <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                      <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mr-1 shrink-0">
-                        Popular States:
-                      </span>
-                      {POPULAR_STATES_QUICK.map((st) => (
-                        <button
-                          key={st}
-                          type="button"
-                          onClick={() => setStateName(st)}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                            stateName === st
-                              ? 'bg-blue-600 text-white shadow-xs font-semibold ring-2 ring-blue-500/20'
-                              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-blue-300 hover:text-blue-600'
-                          }`}
-                        >
-                          {st.replace(' (NCT)', '')}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Quick Districts */}
-                    <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                      <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mr-1 shrink-0">
-                        {stateName && POPULAR_DISTRICTS_BY_STATE[stateName] ? `Districts in ${stateName}:` : 'Popular Districts:'}
-                      </span>
-                      {(stateName && POPULAR_DISTRICTS_BY_STATE[stateName]
-                        ? POPULAR_DISTRICTS_BY_STATE[stateName]
-                        : TOP_DISTRICTS_DEFAULT
-                      ).map((d) => (
-                        <button
-                          key={d}
-                          type="button"
-                          onClick={() => {
-                            setCity(d);
-                            // Auto-assign matching state if not already set
-                            const foundState = Object.entries(POPULAR_DISTRICTS_BY_STATE).find(([_, list]) =>
-                              list.includes(d)
-                            )?.[0];
-                            if (foundState && !stateName) {
-                              setStateName(foundState);
-                            }
-                          }}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                            city === d
-                              ? 'bg-blue-600 text-white shadow-xs font-semibold ring-2 ring-blue-500/20'
-                              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-blue-300 hover:text-blue-600'
-                          }`}
-                        >
-                          {d}
-                        </button>
-                      ))}
                     </div>
                   </div>
                 </div>
