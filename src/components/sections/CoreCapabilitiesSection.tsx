@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
-import { SectionHeader } from '../ui/SectionHeader';
-import { CORE_FEATURES, ProductFeature } from '../../data/features';
 import {
   MessageSquareText,
   Activity,
   FileText,
-  Clock,
-  HeartPulse,
+  Calendar,
   Pill,
+  AlertTriangle,
+  QrCode,
+  Mic,
+  FolderHeart,
   Stethoscope,
-  ShieldCheck,
   ChevronRight,
-  ArrowRight
+  ArrowRight,
+  Sparkles,
+  ShieldCheck,
+  CheckCircle2
 } from 'lucide-react';
 import { RoutePath } from '../../types';
 
@@ -20,135 +23,225 @@ interface CoreCapabilitiesSectionProps {
   onOpenAssessment: () => void;
 }
 
+interface HealthcareServiceCard {
+  id: string;
+  title: string;
+  tagline: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+  bgLight: string;
+  bgDark: string;
+  route: RoutePath;
+  buttonLabel: string;
+  badge: string;
+}
+
 export const CoreCapabilitiesSection: React.FC<CoreCapabilitiesSectionProps> = ({
   onNavigate,
   onOpenAssessment
 }) => {
-  const [selectedFeatureId, setSelectedFeatureId] = useState<string>(CORE_FEATURES[0].id);
+  const services: HealthcareServiceCard[] = [
+    {
+      id: 'ai-assistant',
+      title: 'AI Health Assistant',
+      tagline: 'Conversational intake',
+      description: 'Conversational guidance gathering symptom context, duration, and clinical history.',
+      icon: MessageSquareText,
+      color: '#1769AA',
+      bgLight: 'bg-blue-50/70',
+      bgDark: 'dark:bg-blue-950/40',
+      route: '/chat',
+      buttonLabel: 'Launch Assistant',
+      badge: 'Interactive'
+    },
+    {
+      id: 'symptom-triage',
+      title: 'Symptom Triage',
+      tagline: 'Urgency tiering',
+      description: 'Scores symptom urgency across 5 clinical severity tiers with red-flag detection.',
+      icon: Activity,
+      color: '#16A6A1',
+      bgLight: 'bg-teal-50/70',
+      bgDark: 'dark:bg-teal-950/40',
+      route: '/dashboard/triage',
+      buttonLabel: 'View Triage',
+      badge: 'Clinical Protocol'
+    },
+    {
+      id: 'patient-records',
+      title: 'Health Records',
+      tagline: 'Medical history',
+      description: 'Securely stores chronic conditions, verified allergies, medications, and vitals.',
+      icon: FolderHeart,
+      color: '#102A43',
+      bgLight: 'bg-slate-100/70',
+      bgDark: 'dark:bg-slate-800/50',
+      route: '/dashboard/health-records',
+      buttonLabel: 'Open Records',
+      badge: 'Longitudinal'
+    },
+    {
+      id: 'doctor-portal',
+      title: 'Doctor Portal',
+      tagline: 'Clinical cockpit',
+      description: 'Physician triage workspace with patient queues, lab views, and clinical notes.',
+      icon: Stethoscope,
+      color: '#16865C',
+      bgLight: 'bg-emerald-50/70',
+      bgDark: 'dark:bg-emerald-950/40',
+      route: '/for-doctors',
+      buttonLabel: 'Doctor Portal',
+      badge: 'Clinician'
+    },
+    {
+      id: 'medicine-reminders',
+      title: 'Medicine Reminders',
+      tagline: 'Dosage alerts',
+      description: 'Manages prescription schedules, dosage alerts, and refill tracking.',
+      icon: Pill,
+      color: '#8B5CF6',
+      bgLight: 'bg-purple-50/70',
+      bgDark: 'dark:bg-purple-950/40',
+      route: '/dashboard/medications',
+      buttonLabel: 'Medications',
+      badge: 'Adherence'
+    },
+    {
+      id: 'emergency-sos',
+      title: 'Emergency SOS',
+      tagline: 'Rapid alert',
+      description: 'One-tap distress alert broadcasting location link to emergency contacts.',
+      icon: AlertTriangle,
+      color: '#DC2626',
+      bgLight: 'bg-rose-50/70',
+      bgDark: 'dark:bg-rose-950/40',
+      route: '/dashboard/emergency-contacts',
+      buttonLabel: 'SOS Setup',
+      badge: 'Safety'
+    },
+    {
+      id: 'patient-id-qr',
+      title: 'Digital Health QR',
+      tagline: 'Tokenized sharing',
+      description: 'Generates time-limited cryptographic QR codes for consented doctor review.',
+      icon: QrCode,
+      color: '#0284C7',
+      bgLight: 'bg-sky-50/70',
+      bgDark: 'dark:bg-sky-950/40',
+      route: '/dashboard/patient-card',
+      buttonLabel: 'Digital Card',
+      badge: 'Encrypted'
+    },
+    {
+      id: 'multilingual-voice',
+      title: 'Voice Assistance',
+      tagline: 'Multilingual speech',
+      description: 'Voice input and accessibility read-aloud in English, Hindi, and Bengali.',
+      icon: Mic,
+      color: '#D97706',
+      bgLight: 'bg-amber-50/70',
+      bgDark: 'dark:bg-amber-950/40',
+      route: '/how-it-works',
+      buttonLabel: 'Voice Tools',
+      badge: 'Voice'
+    },
+    {
+      id: 'reports-documents',
+      title: 'Lab Report Insights',
+      tagline: 'Report translation',
+      description: 'Translates lab panels and metabolic markers into clear, plain-language insights.',
+      icon: FileText,
+      color: '#0D9488',
+      bgLight: 'bg-teal-50/70',
+      bgDark: 'dark:bg-teal-950/40',
+      route: '/dashboard/reports',
+      buttonLabel: 'Lab Reports',
+      badge: 'Diagnostic'
+    },
+    {
+      id: 'appointment-management',
+      title: 'Clinical Handoffs',
+      tagline: 'SBAR summary',
+      description: 'Summarizes symptom timelines into a structured 1-page clinician brief.',
+      icon: Calendar,
+      color: '#4F46E5',
+      bgLight: 'bg-indigo-50/70',
+      bgDark: 'dark:bg-indigo-950/40',
+      route: '/dashboard/consultation',
+      buttonLabel: 'Handoff Brief',
+      badge: 'Continuity'
+    }
+  ];
 
-  const getFeatureIcon = (name: string) => {
-    switch (name) {
-      case 'MessageSquareText':
-        return <MessageSquareText className="w-5 h-5" />;
-      case 'Activity':
-        return <Activity className="w-5 h-5" />;
-      case 'FileText':
-        return <FileText className="w-5 h-5" />;
-      case 'Clock':
-        return <Clock className="w-5 h-5" />;
-      case 'HeartPulse':
-        return <HeartPulse className="w-5 h-5" />;
-      case 'Pill':
-        return <Pill className="w-5 h-5" />;
-      case 'Stethoscope':
-        return <Stethoscope className="w-5 h-5" />;
-      case 'ShieldCheck':
-        return <ShieldCheck className="w-5 h-5" />;
-      default:
-        return <Activity className="w-5 h-5" />;
+  const handleAction = (service: HealthcareServiceCard) => {
+    if (service.id === 'ai-assistant') {
+      onOpenAssessment();
+    } else {
+      onNavigate(service.route);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
-  const activeFeature = CORE_FEATURES.find((f) => f.id === selectedFeatureId) || CORE_FEATURES[0];
-
   return (
-    <section className="py-20 lg:py-28 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors" id="capabilities">
+    <section className="py-16 lg:py-20 bg-white dark:bg-[#0B1320] border-b border-[#DCE6EF] dark:border-[#1E2E47] transition-colors" id="features">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <SectionHeader
-          kicker="Platform Architecture"
-          title="One intelligent layer for your health information."
-          description="Designed to organize symptom context, diagnostic documents, and historical trends into clinical clarity without diagnostic pretense."
-        />
+        {/* Section Header */}
+        <div className="text-center max-w-2xl mx-auto mb-12 space-y-2.5">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900/60 text-[#1769AA] dark:text-[#38BDF8] text-xs font-bold uppercase tracking-wider">
+            <span>Essential Platform Features</span>
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#102A43] dark:text-white tracking-tight">
+            Connected Healthcare Tools
+          </h2>
+          <p className="text-sm sm:text-base text-[#64748B] dark:text-slate-300 font-normal">
+            Preliminary symptom triage, health records, and clinical collaboration in one platform.
+          </p>
+        </div>
 
-        {/* 8-Grid Capabilities */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
-          {CORE_FEATURES.map((feature) => {
-            const isSelected = selectedFeatureId === feature.id;
+        {/* 10-Service Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+          {services.map((service) => {
+            const Icon = service.icon;
+
             return (
-              <button
-                key={feature.id}
-                onClick={() => setSelectedFeatureId(feature.id)}
-                className={`text-left p-5 rounded-xl border transition-all flex flex-col justify-between cursor-pointer ${
-                  isSelected
-                    ? 'border-blue-600 dark:border-blue-500 bg-blue-50/40 dark:bg-blue-950/40 shadow-xs ring-1 ring-blue-600 dark:ring-blue-500'
-                    : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50/50 dark:hover:bg-slate-800/50'
-                }`}
+              <div
+                key={service.id}
+                onClick={() => handleAction(service)}
+                className="p-4 rounded-2xl border border-[#DCE6EF] dark:border-[#1E2E47] bg-[#F8FAFC] dark:bg-[#0F172A] hover:bg-white dark:hover:bg-[#111D30] hover:border-blue-400 dark:hover:border-blue-700 transition-all flex flex-col justify-between cursor-pointer group text-left hover:shadow-xs"
               >
                 <div>
-                  <div
-                    className={`w-10 h-10 rounded-lg flex items-center justify-center mb-4 transition-colors ${
-                      isSelected
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-                    }`}
-                  >
-                    {getFeatureIcon(feature.iconName)}
+                  <div className="flex items-center justify-between mb-3">
+                    <div
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${service.bgLight} ${service.bgDark}`}
+                      style={{ color: service.color }}
+                    >
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                      {service.badge}
+                    </span>
                   </div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-1">{feature.title}</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-3">
-                    {feature.description}
+
+                  <h3 className="text-xs font-bold text-[#102A43] dark:text-white leading-snug mb-1 group-hover:text-[#1769AA] dark:group-hover:text-[#38BDF8] transition-colors">
+                    {service.title}
+                  </h3>
+                  <p className="text-[11px] text-[#64748B] dark:text-slate-400 leading-relaxed">
+                    {service.description}
                   </p>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] font-medium">
-                  <span className={isSelected ? 'text-blue-700 dark:text-blue-400 font-semibold' : 'text-slate-400 dark:text-slate-500'}>
-                    {isSelected ? 'Viewing capability' : 'Explore detail'}
-                  </span>
-                  <ChevronRight
-                    className={`w-3.5 h-3.5 ${isSelected ? 'text-blue-600 dark:text-blue-400' : 'text-slate-300 dark:text-slate-600'}`}
-                  />
+                <div className="mt-3 pt-2.5 border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between text-[11px] font-semibold text-[#1769AA] dark:text-[#38BDF8]">
+                  <span>{service.buttonLabel}</span>
+                  <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                 </div>
-              </button>
+              </div>
             );
           })}
-        </div>
-
-        {/* Active Feature Deep-Dive Banner */}
-        <div className="bg-slate-900 text-white rounded-2xl p-6 sm:p-8 border border-slate-800 shadow-xl flex flex-col lg:flex-row items-center justify-between gap-6">
-          <div className="space-y-3 max-w-2xl">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-blue-400" />
-              <span className="text-xs font-mono uppercase text-blue-300 tracking-wider">
-                Active Highlight · {activeFeature.title}
-              </span>
-            </div>
-            <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-              {activeFeature.tagline}
-            </h3>
-            <p className="text-sm text-slate-300 leading-relaxed">
-              {activeFeature.description}
-            </p>
-            <div className="pt-2 flex flex-wrap gap-2">
-              {activeFeature.previewHighlights.map((hl, i) => (
-                <span
-                  key={i}
-                  className="text-xs bg-slate-800 text-slate-300 px-3 py-1 rounded-md border border-slate-700 font-medium"
-                >
-                  ✓ {hl}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="shrink-0 flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-            <button
-              onClick={onOpenAssessment}
-              className="px-5 py-3 text-xs font-semibold text-slate-900 bg-white hover:bg-slate-100 rounded-lg shadow-xs transition-colors text-center whitespace-nowrap"
-            >
-              Try in Assessment Sandbox
-            </button>
-            <button
-              onClick={() => {
-                onNavigate('/features');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-              className="px-5 py-3 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition-colors text-center whitespace-nowrap"
-            >
-              View Full Features Directory
-            </button>
-          </div>
         </div>
       </div>
     </section>
   );
 };
+
+export default CoreCapabilitiesSection;

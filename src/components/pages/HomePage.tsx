@@ -1,16 +1,12 @@
 import React from 'react';
 import { RoutePath } from '../../types';
 import { HeroSection } from '../sections/HeroSection';
-import { TrustStrip } from '../sections/TrustStrip';
-import { ProblemSolutionSection } from '../sections/ProblemSolutionSection';
 import { CoreCapabilitiesSection } from '../sections/CoreCapabilitiesSection';
-import { ClinicalIntelligenceShowcase } from '../sections/ClinicalIntelligenceShowcase';
-import { EmergencySafetySection } from '../sections/EmergencySafetySection';
+import { HowItWorksSection } from '../sections/HowItWorksSection';
 import { AudienceTabsSection } from '../sections/AudienceTabsSection';
-import { EvidenceSection } from '../sections/EvidenceSection';
+import { EmergencySafetySection } from '../sections/EmergencySafetySection';
+import { PrivacySecuritySection } from '../sections/PrivacySecuritySection';
 import { FaqSection } from '../sections/FaqSection';
-import { DownloadAppSection } from '../sections/DownloadAppSection';
-import { FinalCtaSection } from '../sections/FinalCtaSection';
 
 interface HomePageProps {
   onOpenAssessment: () => void;
@@ -20,43 +16,32 @@ interface HomePageProps {
 
 export const HomePage: React.FC<HomePageProps> = ({
   onOpenAssessment,
-  onNavigate,
-  onOpenDownloadModal
+  onNavigate
 }) => {
   return (
     <div className="space-y-0">
-      {/* 1. Hero Section */}
+      {/* 1. Hero Section: Heading, 1-Sentence Desc, CTAs, Authentic Healthcare Image */}
       <HeroSection onOpenAssessment={onOpenAssessment} onNavigate={onNavigate} />
 
-      {/* 2. Trust Strip */}
-      <TrustStrip />
-
-      {/* 3. Problem / Solution Comparison */}
-      <ProblemSolutionSection />
-
-      {/* 4. Core Capabilities Overview */}
+      {/* 2. Essential Product Features: 10 Core Capabilities with 1-Sentence Descriptions */}
       <CoreCapabilitiesSection onNavigate={onNavigate} onOpenAssessment={onOpenAssessment} />
 
-      {/* 5. Interactive Clinical Intelligence Showcase */}
-      <ClinicalIntelligenceShowcase onNavigate={onNavigate} onOpenAssessment={onOpenAssessment} />
+      {/* 3. Short How It Works Section: 4-Step Visual Journey */}
+      <HowItWorksSection onOpenAssessment={onOpenAssessment} onNavigate={onNavigate} />
 
-      {/* 6. Emergency Safety Section (Prominent Red Flag Interceptor) */}
-      <EmergencySafetySection />
-
-      {/* 7. Designed for Both Patients & Clinicians */}
+      {/* 4. Patient and Doctor Benefits */}
       <AudienceTabsSection onNavigate={onNavigate} onOpenAssessment={onOpenAssessment} />
 
-      {/* 8. Download Our Native Android Mobile App with Live QR */}
-      <DownloadAppSection onOpenDownloadModal={onOpenDownloadModal} />
+      {/* 5. Emergency Safety & Clinical Red-Flag Interceptors */}
+      <EmergencySafetySection />
 
-      {/* 9. Clinical Evidence & Governance */}
-      <EvidenceSection />
+      {/* 6. Concise Privacy and Trust Section */}
+      <PrivacySecuritySection onNavigate={onNavigate} />
 
-      {/* 10. Frequently Asked Questions */}
+      {/* 7. Essential FAQs */}
       <FaqSection />
-
-      {/* 11. Final Call to Action */}
-      <FinalCtaSection onOpenAssessment={onOpenAssessment} onNavigate={onNavigate} />
     </div>
   );
 };
+
+export default HomePage;

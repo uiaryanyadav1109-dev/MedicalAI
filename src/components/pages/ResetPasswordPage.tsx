@@ -62,21 +62,21 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onNavigate
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 font-sans">
+    <div className="min-h-screen flex flex-col bg-[#F5F9FC] dark:bg-[#0B1320] text-[#243447] dark:text-slate-100 font-sans transition-colors">
       <AuthHeader currentMode="reset" onNavigate={onNavigate} />
 
       <main className="flex-1 flex items-center justify-center p-6 sm:p-10">
-        <div className="w-full max-w-md bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-xs space-y-6">
+        <div className="w-full max-w-md bg-white dark:bg-[#111D30] p-6 sm:p-8 rounded-2xl border border-[#DCE6EF] dark:border-[#1E2E47] shadow-xl space-y-6">
           {isSuccess ? (
             <div className="text-center py-4 space-y-4">
-              <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+              <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-inner">
                 <CheckCircle2 className="w-6 h-6" />
               </div>
               <div className="space-y-1">
-                <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
+                <h1 className="text-xl sm:text-2xl font-bold text-[#102A43] dark:text-white">
                   Password Updated
                 </h1>
-                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                <p className="text-xs sm:text-sm text-[#64748B] dark:text-slate-300 leading-relaxed">
                   Your password has been updated successfully. You can now use your new password to access Medical AI.
                 </p>
               </div>
@@ -85,7 +85,7 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onNavigate
                 <button
                   type="button"
                   onClick={() => onNavigate('/signin')}
-                  className="w-full py-2.5 sm:py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold rounded-lg shadow-xs transition-colors flex items-center justify-center gap-2"
+                  className="w-full py-3 px-4 bg-[#1769AA] hover:bg-[#102A43] text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <span>Return to Sign In</span>
                   <ArrowRight className="w-4 h-4" />
@@ -95,25 +95,25 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onNavigate
           ) : (
             <>
               <div className="space-y-1.5 text-center sm:text-left">
-                <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                <h1 className="text-2xl font-extrabold text-[#102A43] dark:text-white tracking-tight">
                   Update your password
                 </h1>
-                <p className="text-xs sm:text-sm text-slate-500">
+                <p className="text-xs sm:text-sm text-[#64748B] dark:text-slate-400">
                   Please choose a strong password for your Medical AI account.
                 </p>
               </div>
 
               <form onSubmit={handleSubmit} noValidate className="space-y-4">
                 {/* New Password */}
-                <div className="space-y-1">
+                <div className="space-y-1 text-left">
                   <label
                     htmlFor="reset-password"
-                    className="block text-xs font-semibold text-slate-700"
+                    className="block text-xs font-bold text-[#243447] dark:text-slate-200"
                   >
                     New password
                   </label>
                   <div className="relative">
-                    <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+                    <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
                     <input
                       id="reset-password"
                       type={showPassword ? 'text' : 'password'}
@@ -125,17 +125,17 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onNavigate
                         if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
                       }}
                       placeholder="••••••••••••"
-                      className={`w-full pl-9 pr-10 py-2.5 bg-white border rounded-lg text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none transition-colors ${
+                      className={`w-full pl-10 pr-10 py-3 bg-white dark:bg-[#0B1320] border rounded-xl text-xs sm:text-sm text-[#243447] dark:text-white placeholder:text-slate-400 focus:outline-none transition-all ${
                         errors.password
                           ? 'border-rose-400 focus:ring-2 focus:ring-rose-500/20'
-                          : 'border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20'
+                          : 'border-[#DCE6EF] dark:border-[#1E2E47] focus:border-[#1769AA] focus:ring-2 focus:ring-blue-600/20'
                       }`}
                       aria-invalid={!!errors.password}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="p-1.5 text-slate-400 hover:text-slate-600 absolute right-2.5 top-2 rounded"
+                      className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 absolute right-3 top-2.5 rounded cursor-pointer"
                       aria-label={showPassword ? 'Hide password' : 'Show password'}
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -149,22 +149,22 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onNavigate
 
                   {/* Password Strength Indicator */}
                   {newPassword.length > 0 && (
-                    <div className="pt-1.5 space-y-1">
+                    <div className="pt-2 space-y-1">
                       <div className="flex items-center justify-between text-[11px]">
                         <span className="text-slate-500">Strength</span>
                         <span
                           className={`font-semibold capitalize font-mono text-[10px] ${
                             strength === 'strong'
-                              ? 'text-emerald-700'
+                              ? 'text-emerald-600'
                               : strength === 'fair'
-                              ? 'text-amber-700'
+                              ? 'text-amber-600'
                               : 'text-rose-600'
                           }`}
                         >
                           {strength}
                         </span>
                       </div>
-                      <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden flex gap-0.5">
+                      <div className="h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden flex gap-0.5">
                         <div
                           className={`h-full flex-1 transition-all rounded-full ${
                             strength === 'weak'
@@ -180,12 +180,12 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onNavigate
                               ? 'bg-amber-500'
                               : strength === 'strong'
                               ? 'bg-emerald-500'
-                              : 'bg-slate-200'
+                              : 'bg-slate-200 dark:bg-slate-700'
                           }`}
                         />
                         <div
                           className={`h-full flex-1 transition-all rounded-full ${
-                            strength === 'strong' ? 'bg-emerald-500' : 'bg-slate-200'
+                            strength === 'strong' ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'
                           }`}
                         />
                       </div>
@@ -193,40 +193,36 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onNavigate
                   )}
 
                   {/* Requirements Checklist */}
-                  <div className="pt-2 grid grid-cols-2 gap-1.5 text-[11px] text-slate-500">
-                    <div className={`flex items-center gap-1.5 ${criteria.minLength ? 'text-emerald-700 font-medium' : ''}`}>
+                  <div className="pt-2 grid grid-cols-2 gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                    <div className={`flex items-center gap-1.5 ${criteria.minLength ? 'text-emerald-600 font-medium' : ''}`}>
                       <Check className={`w-3.5 h-3.5 ${criteria.minLength ? 'text-emerald-600' : 'text-slate-300'}`} />
                       <span>8+ characters</span>
                     </div>
-                    <div className={`flex items-center gap-1.5 ${criteria.hasUppercase ? 'text-emerald-700 font-medium' : ''}`}>
-                      <Check className={`w-3.5 h-3.5 ${criteria.hasUppercase ? 'text-emerald-600' : 'text-slate-300'}`} />
+                    <div className={`flex items-center gap-1.5 ${criteria.hasUpper ? 'text-emerald-600 font-medium' : ''}`}>
+                      <Check className={`w-3.5 h-3.5 ${criteria.hasUpper ? 'text-emerald-600' : 'text-slate-300'}`} />
                       <span>Uppercase letter</span>
                     </div>
-                    <div className={`flex items-center gap-1.5 ${criteria.hasLowercase ? 'text-emerald-700 font-medium' : ''}`}>
-                      <Check className={`w-3.5 h-3.5 ${criteria.hasLowercase ? 'text-emerald-600' : 'text-slate-300'}`} />
+                    <div className={`flex items-center gap-1.5 ${criteria.hasLower ? 'text-emerald-600 font-medium' : ''}`}>
+                      <Check className={`w-3.5 h-3.5 ${criteria.hasLower ? 'text-emerald-600' : 'text-slate-300'}`} />
                       <span>Lowercase letter</span>
                     </div>
-                    <div className={`flex items-center gap-1.5 ${criteria.hasNumber ? 'text-emerald-700 font-medium' : ''}`}>
+                    <div className={`flex items-center gap-1.5 ${criteria.hasNumber ? 'text-emerald-600 font-medium' : ''}`}>
                       <Check className={`w-3.5 h-3.5 ${criteria.hasNumber ? 'text-emerald-600' : 'text-slate-300'}`} />
                       <span>Number</span>
-                    </div>
-                    <div className={`flex items-center gap-1.5 col-span-2 ${criteria.hasSpecial ? 'text-emerald-700 font-medium' : ''}`}>
-                      <Check className={`w-3.5 h-3.5 ${criteria.hasSpecial ? 'text-emerald-600' : 'text-slate-300'}`} />
-                      <span>Special character</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Confirm New Password */}
-                <div className="space-y-1">
+                {/* Confirm Password */}
+                <div className="space-y-1 text-left">
                   <label
                     htmlFor="reset-confirm-password"
-                    className="block text-xs font-semibold text-slate-700"
+                    className="block text-xs font-bold text-[#243447] dark:text-slate-200"
                   >
                     Confirm new password
                   </label>
                   <div className="relative">
-                    <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+                    <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
                     <input
                       id="reset-confirm-password"
                       type={showConfirmPassword ? 'text' : 'password'}
@@ -235,22 +231,20 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onNavigate
                       disabled={isLoading}
                       onChange={(e) => {
                         setConfirmNewPassword(e.target.value);
-                        if (errors.confirmPassword) {
-                          setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
-                        }
+                        if (errors.confirmPassword) setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
                       }}
                       placeholder="••••••••••••"
-                      className={`w-full pl-9 pr-10 py-2.5 bg-white border rounded-lg text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none transition-colors ${
+                      className={`w-full pl-10 pr-10 py-3 bg-white dark:bg-[#0B1320] border rounded-xl text-xs sm:text-sm text-[#243447] dark:text-white placeholder:text-slate-400 focus:outline-none transition-all ${
                         errors.confirmPassword
                           ? 'border-rose-400 focus:ring-2 focus:ring-rose-500/20'
-                          : 'border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20'
+                          : 'border-[#DCE6EF] dark:border-[#1E2E47] focus:border-[#1769AA] focus:ring-2 focus:ring-blue-600/20'
                       }`}
                       aria-invalid={!!errors.confirmPassword}
                     />
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="p-1.5 text-slate-400 hover:text-slate-600 absolute right-2.5 top-2 rounded"
+                      className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 absolute right-3 top-2.5 rounded cursor-pointer"
                       aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
                     >
                       {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -263,10 +257,11 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onNavigate
                   )}
                 </div>
 
+                {/* Submit */}
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full py-2.5 sm:py-3 px-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-blue-400 text-white text-xs sm:text-sm font-semibold rounded-lg shadow-xs transition-colors flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+                  className="w-full py-3 px-4 bg-[#1769AA] hover:bg-[#102A43] active:bg-[#0B1320] disabled:bg-blue-400 text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {isLoading ? (
                     <>
@@ -287,3 +282,5 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onNavigate
     </div>
   );
 };
+
+export default ResetPasswordPage;

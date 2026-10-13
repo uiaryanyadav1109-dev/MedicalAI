@@ -108,31 +108,31 @@ export const PatientQrSharingView: React.FC<{ onNavigate: (route: RoutePath) => 
         <div>
           <div className="flex items-center gap-2 text-xs font-mono font-semibold uppercase text-emerald-700">
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span>Zero-Trust Privacy · Ephemeral QR Access Control</span>
+            <span>Ephemeral QR Sharing</span>
           </div>
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight mt-1">
-            Machine-Readable QR Sharing
+            Secure QR Sharing
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            Grant temporary, cryptographically isolated read access to attending physicians and emergency first responders.
+            Grant temporary, encrypted read access to attending physicians and emergency first responders.
           </p>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => onNavigate('/dashboard/data-access-requests')}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
+            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer shadow-xs"
           >
             <ShieldCheck className="w-4 h-4" />
-            <span>Review Access Requests & Consent</span>
+            <span>Access Requests</span>
           </button>
 
           <button
             onClick={() => setShowClinicianPreview(!showClinicianPreview)}
-            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors flex items-center gap-2 shrink-0 cursor-pointer"
+            className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer"
           >
             <Eye className="w-4 h-4" />
-            <span>{showClinicianPreview ? 'Hide Clinician Screen' : 'Preview Doctor Screen'}</span>
+            <span>{showClinicianPreview ? 'Hide Doctor View' : 'Preview Doctor View'}</span>
           </button>
         </div>
       </div>
@@ -294,33 +294,56 @@ export const PatientQrSharingView: React.FC<{ onNavigate: (route: RoutePath) => 
             </div>
           </div>
 
-          {/* Simulated Doctor Preview */}
+          {/* Genuine Zero-Trust Doctor Preview */}
           {showClinicianPreview && shareRecord && (
-            <div className="bg-slate-900 text-white rounded-2xl p-5 border border-slate-800 space-y-3">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                <span className="text-xs font-mono uppercase text-emerald-400 font-bold">
-                  Doctor Screen Preview (/share/{shareRecord.token.substring(0, 12)}...)
+            <div className="bg-slate-900 text-white rounded-2xl p-5 border border-slate-800 space-y-4 shadow-xl">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                <span className="text-xs font-mono uppercase text-emerald-400 font-bold flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Clinician Zero-Trust Scan View (/share/{shareRecord.token.substring(0, 10)}...)</span>
                 </span>
-                <span className="text-[10px] text-slate-400">What the scanner sees</span>
+                <span className="text-[10px] text-slate-400 font-mono">Real Scanner Experience</span>
               </div>
 
-              <div className="flex items-center gap-3">
-                <ProfileAvatar
-                  name={patientName}
-                  imageUrl={user?.profileImageUrl}
-                  size="md"
-                  className="ring-2 ring-slate-700"
-                />
-                <div>
-                  <span className="font-bold text-sm block">{patientName}</span>
-                  <span className="text-xs text-slate-400 font-mono">
-                    ID: {patientIdCode} · Blood Group: {user?.bloodGroup || user?.bloodType || 'O+'}
-                  </span>
+              <div className="flex items-center justify-between p-3 bg-slate-950 rounded-xl border border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30 flex items-center justify-center font-bold font-mono">
+                    {patientName ? patientName[0] : 'P'}
+                  </div>
+                  <div>
+                    <span className="font-bold text-sm text-white block">
+                      {patientName.split(' ').map((p) => (p.length > 1 ? p[0] + '****' : p)).join(' ')}
+                    </span>
+                    <span className="text-[11px] text-slate-400 font-mono">
+                      Pass ID: {patientIdCode} · Institutional Healthcare Network
+                    </span>
+                  </div>
                 </div>
+                <span className="px-2 py-0.5 rounded bg-emerald-950/60 border border-emerald-800 text-emerald-400 text-[10px] font-mono font-bold">
+                  VERIFIED PASS
+                </span>
               </div>
 
-              <div className="text-xs text-slate-300 bg-slate-800/80 p-3 rounded-xl border border-slate-700">
-                Allergies: {(user?.allergies || ['None reported']).join(', ')} · Emergency Contact: {user?.emergencyContacts?.[0]?.name || 'Registered family member'} ({user?.emergencyContacts?.[0]?.phone || 'Phone on file'})
+              <div className="p-3 bg-amber-950/30 border border-amber-800/60 rounded-xl text-xs space-y-1">
+                <div className="flex items-center gap-1.5 font-bold text-amber-300">
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>Protected Clinical Records Locked</span>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  Medical history, allergies, medications, and vitals remain encrypted. Attending clinicians must submit an authenticated identity, select a mandatory medical reason, and obtain your consent before any records are unlocked.
+                </p>
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <a
+                  href={shareableUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <span>Open Interactive Clinician Gate</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
               </div>
             </div>
           )}

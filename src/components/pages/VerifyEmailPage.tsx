@@ -45,27 +45,27 @@ export const VerifyEmailPage: React.FC<VerifyEmailPageProps> = ({
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 font-sans">
+    <div className="min-h-screen flex flex-col bg-[#F5F9FC] dark:bg-[#0B1320] text-[#243447] dark:text-slate-100 font-sans transition-colors">
       <AuthHeader currentMode="verify" onNavigate={onNavigate} />
 
       <main className="flex-1 flex items-center justify-center p-6 sm:p-10">
-        <div className="w-full max-w-md bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-xs space-y-6 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto shadow-2xs">
+        <div className="w-full max-w-md bg-white dark:bg-[#111D30] p-6 sm:p-8 rounded-2xl border border-[#DCE6EF] dark:border-[#1E2E47] shadow-xl space-y-6 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-950/60 text-[#1769AA] dark:text-[#38BDF8] flex items-center justify-center mx-auto shadow-inner">
             <MailCheck className="w-7 h-7" />
           </div>
 
           <div className="space-y-1.5">
-            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+            <h1 className="text-2xl font-extrabold text-[#102A43] dark:text-white tracking-tight">
               Verify your email
             </h1>
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed text-pretty">
+            <p className="text-xs sm:text-sm text-[#64748B] dark:text-slate-300 leading-relaxed text-pretty">
               Check your inbox for a verification link sent to{' '}
-              <span className="font-semibold font-mono text-slate-900">{email}</span>.
+              <span className="font-semibold font-mono text-[#102A43] dark:text-white">{email}</span>.
             </p>
           </div>
 
-          <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-500 text-left space-y-1">
-            <span className="font-semibold text-slate-700 block">Next Steps:</span>
+          <div className="p-3.5 bg-slate-50 dark:bg-[#0B1320] rounded-xl border border-[#DCE6EF] dark:border-[#1E2E47] text-xs text-[#64748B] dark:text-slate-400 text-left space-y-1">
+            <span className="font-bold text-[#102A43] dark:text-slate-200 block">Next Steps:</span>
             <p className="leading-relaxed">
               1. Open the verification link in your inbox to confirm your account.<br />
               2. If you don't see the email within 2 minutes, check your spam or promotional folders.
@@ -73,7 +73,7 @@ export const VerifyEmailPage: React.FC<VerifyEmailPageProps> = ({
           </div>
 
           {resendMessage && (
-            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-center justify-center gap-2">
+            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 rounded-xl text-xs text-emerald-900 dark:text-emerald-200 flex items-center justify-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>{resendMessage}</span>
             </div>
@@ -84,7 +84,7 @@ export const VerifyEmailPage: React.FC<VerifyEmailPageProps> = ({
               type="button"
               disabled={cooldown > 0 || isResending}
               onClick={handleResend}
-              className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 disabled:bg-slate-100 disabled:text-slate-400 text-slate-700 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
+              className="w-full py-2.5 px-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 text-[#243447] dark:text-slate-300 text-xs font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer"
             >
               <RotateCw className={`w-3.5 h-3.5 ${isResending ? 'animate-spin' : ''}`} />
               <span>
@@ -95,7 +95,7 @@ export const VerifyEmailPage: React.FC<VerifyEmailPageProps> = ({
             <button
               type="button"
               onClick={() => onNavigate('/signin')}
-              className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors flex items-center justify-center gap-1.5"
+              className="w-full py-2.5 px-4 bg-[#1769AA] hover:bg-[#102A43] text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Back to sign in</span>
@@ -108,3 +108,5 @@ export const VerifyEmailPage: React.FC<VerifyEmailPageProps> = ({
     </div>
   );
 };
+
+export default VerifyEmailPage;

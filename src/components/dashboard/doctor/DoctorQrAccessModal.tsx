@@ -41,7 +41,9 @@ export const DoctorQrAccessModal: React.FC<DoctorQrAccessModalProps> = ({
   onSelectPatient
 }) => {
   const { user } = useAuth();
-  const [tokenInput, setTokenInput] = useState('mai-mv2p5tyz-v54bjo39wudze3q1');
+  const [tokenInput, setTokenInput] = useState(() => {
+    return qrShareService.getEmergencyShareToken('pat-1')?.token || '';
+  });
   const [isResolving, setIsResolving] = useState(false);
   const [resolution, setResolution] = useState<QrTokenResolution | null>(null);
   const [resolvedPatientId, setResolvedPatientId] = useState<string>('pat-1');
@@ -69,10 +71,15 @@ export const DoctorQrAccessModal: React.FC<DoctorQrAccessModalProps> = ({
   const [activeRequest, setActiveRequest] = useState<QrAccessRequest | null>(null);
   const [scopedData, setScopedData] = useState<any>(null);
 
-  // Auto-resolve sample token when modal opens
+  // Auto-resolve active token when modal opens
   useEffect(() => {
-    if (isOpen && !resolution) {
-      handleResolveToken(tokenInput);
+    if (isOpen) {
+      const activeShare = qrShareService.getEmergencyShareToken('pat-1');
+      const tokenToUse = activeShare?.token || tokenInput;
+      if (tokenToUse) {
+        setTokenInput(tokenToUse);
+        handleResolveToken(tokenToUse);
+      }
     }
   }, [isOpen]);
 
@@ -356,6 +363,23 @@ export const DoctorQrAccessModal: React.FC<DoctorQrAccessModalProps> = ({
                     {isResolving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
                     <span>Resolve</span>
                   </button>
+                </div>
+                <div className="flex items-center justify-between pt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const activeShare = qrShareService.getEmergencyShareToken('pat-1');
+                      if (activeShare?.token) {
+                        setTokenInput(activeShare.token);
+                        handleResolveToken(activeShare.token);
+                      }
+                    }}
+                    className="text-[11px] text-blue-400 hover:text-blue-300 flex items-center gap-1 cursor-pointer font-medium"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>Auto-Fill Active Patient Pass (Aryan Yadav · MAI-80429)</span>
+                  </button>
+                  <span className="text-[10px] text-slate-500 font-mono">Zero-Trust Protected</span>
                 </div>
               </div>
 

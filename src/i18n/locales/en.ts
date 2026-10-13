@@ -28,7 +28,7 @@ export const en = {
     learnMore: 'Learn more'
   },
   footer: {
-    tagline: 'AI-Assisted Clinical Intelligence & Ambulatory Preliminary Triage Infrastructure.',
+    tagline: 'AI-assisted health guidance and connected healthcare tools in one place.',
     compliance: 'HIPAA & GDPR Architectural Standards Compliant · ISO 27001 Security Best Practices · AES-256 Local Encryption.',
     emergencyNotice: 'Emergency Notice: Medical AI is an ambulatory preparation and decision-support system. In acute life-threatening emergencies, dial 112 / 108 or visit the nearest emergency medical facility immediately.',
     allRightsReserved: 'All clinical rights reserved.',
@@ -40,10 +40,10 @@ export const en = {
   },
   home: {
     heroBadge: 'Verified Clinical Intelligence Infrastructure',
-    heroTitle: 'Clinical Clarity Before, During, and After Doctor Consultations',
-    heroSubtitle: 'Understand complex medical reports, monitor ambulatory vitals, track medications, and prepare structured clinical handoffs for your healthcare team.',
-    startAssessment: 'Start Preliminary Assessment',
-    exploreDemo: 'Explore Live Sandbox',
+    heroTitle: 'Smarter Healthcare. More Informed Decisions.',
+    heroSubtitle: 'AI-assisted health guidance and connected healthcare tools in one place.',
+    startAssessment: 'Get Started',
+    exploreDemo: 'Explore Features',
     stat1Label: 'Analyte Reference Accuracy',
     stat1Value: '99.4%',
     stat2Label: 'Average Consultation Prep Time',

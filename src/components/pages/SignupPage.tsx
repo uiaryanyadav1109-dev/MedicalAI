@@ -9,6 +9,7 @@ import {
 } from '../../types';
 import { AuthHeader } from '../auth/AuthHeader';
 import { AuthFooter } from '../auth/AuthFooter';
+import { DoctorSignupWizard } from '../auth/DoctorSignupWizard';
 import { GoogleLoginButton } from '../auth/GoogleLoginButton';
 import { GoogleAccountChooserModal, GoogleAccountOption } from '../auth/GoogleAccountChooserModal';
 import { useAuth } from '../../context/AuthContext';
@@ -228,6 +229,7 @@ export const SignupPage: React.FC<SignupPageProps> = ({
     }
   }, [isAuthenticated]);
 
+  const [selectedRole, setSelectedRole] = useState<'patient' | 'doctor'>('patient');
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [createdPatientId, setCreatedPatientId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -970,7 +972,43 @@ export const SignupPage: React.FC<SignupPageProps> = ({
 
       {/* Main Form Container */}
       <main className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
-        {/* Onboarding Header Banner */}
+        {/* Role Selector: Patient vs Doctor */}
+        <div className="mb-8 p-1.5 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl flex max-w-md mx-auto sm:mx-0 shadow-2xs">
+          <button
+            type="button"
+            onClick={() => setSelectedRole('patient')}
+            className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              selectedRole === 'patient'
+                ? 'bg-white dark:bg-[#1769AA] text-[#102A43] dark:text-white shadow-xs'
+                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <User className="w-4 h-4 text-blue-600 dark:text-white" />
+            <span>Patient Onboarding</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedRole('doctor')}
+            className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              selectedRole === 'doctor'
+                ? 'bg-white dark:bg-[#16865C] text-[#102A43] dark:text-white shadow-xs'
+                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Stethoscope className="w-4 h-4 text-emerald-600 dark:text-emerald-300" />
+            <span>Doctor &amp; Clinician</span>
+          </button>
+        </div>
+
+        {selectedRole === 'doctor' ? (
+          <DoctorSignupWizard
+            onNavigate={onNavigate}
+            onOpenAssessment={onOpenAssessment}
+            onRegisteredEmailChange={onRegisteredEmailChange}
+          />
+        ) : (
+          <>
+            {/* Onboarding Header Banner */}
         <div className="mb-6 sm:mb-8 text-center sm:text-left flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
           <div>
             <div className="flex items-center gap-2 justify-center sm:justify-start mb-1">
@@ -999,14 +1037,14 @@ export const SignupPage: React.FC<SignupPageProps> = ({
         </div>
 
         {/* Stepper Navigation Bar - strictly contained inside card */}
-        <div className="mb-8 bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
-          {/* Phase Badge & Summary */}
-          <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100 dark:border-slate-800/80 text-xs">
+        <div className="mb-8 bg-white dark:bg-[#0E1A2D] rounded-2xl p-4 border border-slate-200 dark:border-[#1E2E47] shadow-xs">
+          {/* Phase Badge & Summary matching Doctor Stepper */}
+          <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100 dark:border-slate-800 text-xs">
             <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded-md font-semibold text-[11px] bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-900/40">
+              <span className="px-2.5 py-0.5 rounded-md font-semibold text-[11px] bg-blue-50 dark:bg-blue-950/60 text-[#1769AA] dark:text-blue-300 border border-blue-200/60 dark:border-blue-900/40">
                 Phase {currentStep <= 4 ? '1 of 4' : currentStep <= 7 ? '2 of 4' : currentStep <= 9 ? '3 of 4' : '4 of 4'}
               </span>
-              <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">
+              <span className="font-semibold text-slate-800 dark:text-slate-200">
                 {currentStep <= 4
                   ? 'Identity & Contact Setup'
                   : currentStep <= 7
@@ -1016,57 +1054,52 @@ export const SignupPage: React.FC<SignupPageProps> = ({
                   : 'Consent & Verification'}
               </span>
             </div>
-            <span className="text-slate-400 dark:text-slate-500 font-medium text-[11px] shrink-0 ml-2">
+            <span className="text-slate-400 dark:text-slate-500 font-medium text-[11px]">
               {Math.round((currentStep / 11) * 100)}% Complete
             </span>
           </div>
 
-          {/* Scrollable Step Track */}
-          <nav aria-label="Registration Progress" className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto py-1 scrollbar-none w-full">
+          {/* Step Cards - matching Doctor Onboarding Stepper with Icon on Top and Label Below */}
+          <nav
+            aria-label="Registration Progress"
+            className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 no-scrollbar sm:grid sm:grid-cols-11"
+          >
             {STEPS.map((step, idx) => {
+              const Icon = step.icon;
               const isPassed = step.id < currentStep;
               const isCurrent = step.id === currentStep;
 
               return (
-                <div key={step.id} className="flex items-center shrink-0">
-                  <button
-                    type="button"
-                    ref={(el) => {
-                      stepRefs.current[idx] = el;
-                    }}
-                    onClick={() => {
-                      if (step.id < currentStep) jumpToStep(step.id);
-                    }}
-                    disabled={step.id > currentStep}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs transition-all select-none shrink-0 ${
-                      isCurrent
-                        ? 'bg-blue-600 text-white font-bold shadow-xs ring-2 ring-blue-500/30'
-                        : isPassed
-                        ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60 font-semibold hover:bg-emerald-100 dark:hover:bg-emerald-900/40 cursor-pointer'
-                        : 'bg-slate-50 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 font-medium opacity-60 cursor-not-allowed border border-transparent'
-                    }`}
-                    title={step.label}
-                  >
-                    <div
-                      className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold ${
-                        isCurrent
-                          ? 'bg-white/25 text-white'
-                          : isPassed
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
-                      }`}
-                    >
-                      {isPassed ? <CheckCircle2 className="w-3.5 h-3.5" /> : step.id}
-                    </div>
-                    <span className="whitespace-nowrap font-medium">
-                      {step.title}
-                    </span>
-                  </button>
-
-                  {idx < STEPS.length - 1 && (
-                    <div className="w-2 h-0.5 mx-1 bg-slate-200 dark:bg-slate-800 shrink-0" />
-                  )}
-                </div>
+                <button
+                  key={step.id}
+                  type="button"
+                  ref={(el) => {
+                    stepRefs.current[idx] = el;
+                  }}
+                  onClick={() => {
+                    if (step.id < currentStep) jumpToStep(step.id);
+                  }}
+                  disabled={step.id > currentStep}
+                  className={`flex flex-col items-center justify-center p-2 rounded-xl text-center transition-all shrink-0 min-w-[70px] sm:min-w-0 sm:w-full cursor-pointer ${
+                    isCurrent
+                      ? 'bg-blue-50/80 dark:bg-blue-950/60 border border-blue-300 dark:border-blue-700 text-[#1769AA] dark:text-[#38BDF8] font-bold shadow-2xs'
+                      : isPassed
+                      ? 'bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/40 text-blue-600 dark:text-blue-400 cursor-pointer'
+                      : 'bg-transparent text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-50'
+                  }`}
+                  title={step.label}
+                >
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center mb-1 text-xs">
+                    {isPassed ? (
+                      <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    ) : (
+                      <Icon className={`w-4 h-4 ${isCurrent ? 'text-[#1769AA] dark:text-[#38BDF8]' : isPassed ? 'text-blue-600 dark:text-blue-400' : 'text-slate-300 dark:text-slate-600'}`} />
+                    )}
+                  </div>
+                  <span className={`text-[11px] truncate w-full ${isCurrent ? 'font-bold text-[#1769AA] dark:text-[#38BDF8]' : isPassed ? 'font-medium text-slate-700 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`}>
+                    {step.title}
+                  </span>
+                </button>
               );
             })}
           </nav>
@@ -3239,6 +3272,8 @@ export const SignupPage: React.FC<SignupPageProps> = ({
             )}
           </div>
         </div>
+          </>
+        )}
       </main>
 
       <AuthFooter onNavigate={onNavigate} />
