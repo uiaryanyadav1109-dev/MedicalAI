@@ -1505,37 +1505,6 @@ export const SignupPage: React.FC<SignupPageProps> = ({
                     </datalist>
                   </div>
                 </div>
-
-                {/* Quick Country / Nationality chips */}
-                <div className="flex flex-wrap items-center gap-1.5 text-xs pt-0.5">
-                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mr-1">
-                    Quick Choose:
-                  </span>
-                  {[
-                    { c: 'India', n: 'Indian' },
-                    { c: 'United States', n: 'American' },
-                    { c: 'United Kingdom', n: 'British' },
-                    { c: 'United Arab Emirates', n: 'Emirati' },
-                    { c: 'Canada', n: 'Canadian' }
-                  ].map((pair) => (
-                    <button
-                      key={pair.c}
-                      type="button"
-                      onClick={() => {
-                        setCountry(pair.c);
-                        setNationality(pair.n);
-                        setAddressCountry(pair.c);
-                      }}
-                      className={`px-2 py-0.5 rounded-md text-[11px] font-medium transition-all cursor-pointer ${
-                        country === pair.c
-                          ? 'bg-blue-600 text-white font-semibold shadow-xs ring-2 ring-blue-500/20'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                      }`}
-                    >
-                      {pair.c === 'United Arab Emirates' ? 'UAE' : pair.c === 'United States' ? 'USA' : pair.c === 'United Kingdom' ? 'UK' : pair.c}
-                    </button>
-                  ))}
-                </div>
               </div>
             </div>
           )}
