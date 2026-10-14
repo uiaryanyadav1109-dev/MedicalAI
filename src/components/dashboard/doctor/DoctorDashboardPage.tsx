@@ -27,7 +27,7 @@ export const DoctorDashboardPage: React.FC<DoctorDashboardPageProps> = ({
   currentRoute,
   onNavigate
 }) => {
-  const { user, role, logout, loginAsDemo } = useAuth();
+  const { user, role, logout } = useAuth();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState<string>('pat-1');
   const [activeQueueFilter, setActiveQueueFilter] = useState<string>('all');
@@ -44,31 +44,22 @@ export const DoctorDashboardPage: React.FC<DoctorDashboardPageProps> = ({
           <p className="text-xs text-slate-500">
             This terminal requires authorized physician credentials. Your current account ({user?.email || 'patient'}) is not credentialed as a medical provider.
           </p>
-          <div className="pt-2 flex flex-col gap-2">
-            <button
-              onClick={() => {
-                loginAsDemo('doctor');
-                onNavigate('/doctor');
-              }}
-              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center justify-center gap-2 transition-colors"
-            >
-              <Stethoscope className="w-4 h-4" />
-              <span>Enter Clinician Portal (Dr. Sarah Chen, MD)</span>
-            </button>
-            <button
-              onClick={() => onNavigate('/dashboard')}
-              className="w-full py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-medium transition-colors"
-            >
-              Go to Patient Portal
-            </button>
+          <div className="pt-2 flex flex-col gap-2.5">
             <button
               onClick={() => {
                 logout();
                 onNavigate('/login');
               }}
-              className="w-full py-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-[11px] font-medium transition-colors"
+              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
-              Sign Out & Log In with Custom Credentials
+              <Stethoscope className="w-4 h-4" />
+              <span>Sign In with Clinician Credentials</span>
+            </button>
+            <button
+              onClick={() => onNavigate('/dashboard')}
+              className="w-full py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-medium transition-colors cursor-pointer"
+            >
+              Go to Patient Portal
             </button>
           </div>
         </div>

@@ -9,6 +9,7 @@
 import express from 'express';
 import { medicalDb } from './medicalDb';
 import { User, EmergencyContact, PatientOnboardingData } from '../types';
+import { findDoctorCredential, doctorCredentialToUser } from '../data/doctorCredentials';
 
 export function createAuthApiRouter() {
   const router = express.Router();
@@ -26,7 +27,19 @@ export function createAuthApiRouter() {
 
     const user = medicalDb.getUserByEmail(email);
     if (!user) {
-      // Check if it's the clinician demo account
+      // Check if it matches any pre-configured doctor credentials
+      const matchedDoctor = findDoctorCredential(email);
+      if (matchedDoctor) {
+        const docUser = medicalDb.getUserById(matchedDoctor.id) || doctorCredentialToUser(matchedDoctor);
+        res.json({
+          success: true,
+          token: `token-${Date.now()}-${matchedDoctor.id}`,
+          user: docUser
+        });
+        return;
+      }
+
+      // Check if it's the clinician demo account keyword fallback
       if (email.toLowerCase().includes('doctor') || email.toLowerCase().includes('chen') || email.toLowerCase().includes('doc-1')) {
         const docUser = medicalDb.getUserById('doc-1');
         if (docUser) {

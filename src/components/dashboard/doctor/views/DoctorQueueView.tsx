@@ -72,54 +72,61 @@ export const DoctorQueueView: React.FC<DoctorQueueViewProps> = ({
   // History expanded state per patient
   const [expandedHistoryPatientId, setExpandedHistoryPatientId] = useState<string | null>(null);
 
-  const loadData = async (isBackground = false) => {
-    if (!isBackground) {
-      setLoading(true);
-    }
-    setError(null);
-    try {
-      const dashboard = await clinicalStore.fetchDoctorDashboard();
-      if (dashboard) setMetrics(dashboard);
-
-      const res = await clinicalStore.fetchDoctorPatients({
-        tier: filterTier,
-        department: departmentFilter,
-        status: statusFilter,
-        search: search,
-        sort: sortBy
-      });
-
-      if (res && res.patients) {
-        setPatients(res.patients);
-      } else {
-        setPatients(clinicalStore.getPatients());
-      }
-      setLastSynced(new Date());
-    } catch (err: any) {
-      if (!isBackground) {
-        setError('Unable to load clinical queue from server. Offline fallback enabled.');
-      }
-      setPatients(clinicalStore.getPatients());
-    } finally {
-      if (!isBackground) {
-        setLoading(false);
-      }
-    }
-  };
-
   useEffect(() => {
-    loadData();
+    let isMounted = true;
 
-    // Live refresh polling every 10 seconds for real-time updates from patient portal and Android app
+    const safeLoadData = async (isBackground = false) => {
+      if (!isBackground) {
+        setLoading(true);
+      }
+      setError(null);
+      try {
+        const dashboard = await clinicalStore.fetchDoctorDashboard();
+        if (isMounted && dashboard) setMetrics(dashboard);
+
+        const res = await clinicalStore.fetchDoctorPatients({
+          tier: filterTier,
+          department: departmentFilter,
+          status: statusFilter,
+          search: search,
+          sort: sortBy
+        });
+
+        if (!isMounted) return;
+        if (res && res.patients) {
+          setPatients(res.patients);
+        } else {
+          setPatients(clinicalStore.getPatients());
+        }
+        setLastSynced(new Date());
+      } catch (err: any) {
+        if (!isMounted) return;
+        if (!isBackground) {
+          setError('Unable to load clinical queue from server. Offline fallback enabled.');
+        }
+        setPatients(clinicalStore.getPatients());
+      } finally {
+        if (isMounted && !isBackground) {
+          setLoading(false);
+        }
+      }
+    };
+
+    safeLoadData();
+
+    // Live refresh polling every 15 seconds for real-time updates from patient portal and Android app
     const pollInterval = setInterval(() => {
-      loadData(true);
-    }, 10000);
+      safeLoadData(true);
+    }, 15000);
 
     const unsub = clinicalStore.subscribe(() => {
-      setPatients(clinicalStore.getPatients());
+      if (isMounted) {
+        setPatients(clinicalStore.getPatients());
+      }
     });
 
     return () => {
+      isMounted = false;
       clearInterval(pollInterval);
       unsub();
     };

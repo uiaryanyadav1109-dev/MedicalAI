@@ -23,20 +23,25 @@ interface GoogleAccountChooserModalProps {
   requestedRole: 'patient' | 'doctor';
 }
 
-const DEFAULT_GOOGLE_ACCOUNTS: GoogleAccountOption[] = [
-  {
-    email: 'aryan.yadav@gmail.com',
-    name: 'Aryan Yadav',
-    photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256',
-    uid: 'google-usr-1049281048201'
-  },
-  {
-    email: 'dr.sarah.chen@gmail.com',
-    name: 'Dr. Sarah Chen, MD',
-    photoUrl: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=256',
-    uid: 'google-usr-9812749102831'
+const getStoredGoogleAccounts = (): GoogleAccountOption[] => {
+  try {
+    const raw = localStorage.getItem('medical_ai_saved_google_accounts');
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
   }
-];
+};
+
+const saveGoogleAccount = (account: GoogleAccountOption) => {
+  try {
+    const existing = getStoredGoogleAccounts();
+    const filtered = existing.filter((a) => a.email.toLowerCase() !== account.email.toLowerCase());
+    const updated = [account, ...filtered].slice(0, 5);
+    localStorage.setItem('medical_ai_saved_google_accounts', JSON.stringify(updated));
+  } catch {
+    // safe fallback
+  }
+};
 
 export const GoogleAccountChooserModal: React.FC<GoogleAccountChooserModalProps> = ({
   isOpen,
@@ -44,9 +49,10 @@ export const GoogleAccountChooserModal: React.FC<GoogleAccountChooserModalProps>
   onSelectAccount,
   requestedRole
 }) => {
+  const [savedAccounts, setSavedAccounts] = useState<GoogleAccountOption[]>(getStoredGoogleAccounts);
   const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [showCustomInput, setShowCustomInput] = useState<boolean>(() => getStoredGoogleAccounts().length === 0);
   const [customName, setCustomName] = useState('');
   const [customEmail, setCustomEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +64,8 @@ export const GoogleAccountChooserModal: React.FC<GoogleAccountChooserModalProps>
     setIsLoading(true);
     setError(null);
     try {
+      saveGoogleAccount(account);
+      setSavedAccounts(getStoredGoogleAccounts());
       await onSelectAccount(account);
       onClose();
     } catch (err: any) {
@@ -139,10 +147,10 @@ export const GoogleAccountChooserModal: React.FC<GoogleAccountChooserModalProps>
 
         {/* Account List */}
         <div className="p-6 sm:p-8 space-y-3">
-          {!showCustomInput ? (
+          {!showCustomInput && savedAccounts.length > 0 ? (
             <>
               <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 overflow-hidden">
-                {DEFAULT_GOOGLE_ACCOUNTS.map((account) => {
+                {savedAccounts.map((account) => {
                   const isSelected = selectedEmail === account.email;
                   return (
                     <button
@@ -203,7 +211,7 @@ export const GoogleAccountChooserModal: React.FC<GoogleAccountChooserModalProps>
                   type="text"
                   value={customName}
                   onChange={(e) => setCustomName(e.target.value)}
-                  placeholder="e.g. John Doe"
+                  placeholder="e.g. Dr. Alex Mercer / Jane Doe"
                   className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-xs sm:text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -225,10 +233,16 @@ export const GoogleAccountChooserModal: React.FC<GoogleAccountChooserModalProps>
               <div className="flex gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowCustomInput(false)}
+                  onClick={() => {
+                    if (savedAccounts.length > 0) {
+                      setShowCustomInput(false);
+                    } else {
+                      onClose();
+                    }
+                  }}
                   className="flex-1 py-2.5 rounded-lg border border-slate-300 text-slate-700 text-xs sm:text-sm font-medium hover:bg-slate-50 transition-colors"
                 >
-                  Back
+                  {savedAccounts.length > 0 ? 'Back to accounts' : 'Cancel'}
                 </button>
                 <button
                   type="submit"

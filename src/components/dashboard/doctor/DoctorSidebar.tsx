@@ -189,15 +189,23 @@ export const DoctorSidebar: React.FC<DoctorSidebarProps> = ({
 
       {/* Doctor Profile Badge */}
       <div className="p-4 mx-3 my-3 bg-slate-900/90 rounded-xl border border-slate-800 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg bg-emerald-600/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0">
-          MD
-        </div>
+        {user?.profileImageUrl ? (
+          <img
+            src={user.profileImageUrl}
+            alt={user.name || 'Doctor'}
+            className="w-10 h-10 rounded-lg object-cover border border-emerald-500/40 shrink-0"
+          />
+        ) : (
+          <div className="w-10 h-10 rounded-lg bg-emerald-600/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0">
+            MD
+          </div>
+        )}
         <div className="min-w-0 flex-1">
-          <div className="text-xs font-semibold text-white truncate">
+          <div className="text-xs font-semibold text-white truncate" title={user?.name || 'Physician'}>
             {user?.name || 'Dr. Sarah Chen, MD'}
           </div>
-          <div className="text-[10px] font-mono text-slate-400 truncate">
-            NPI: {user?.npi || '1942850192'}
+          <div className="text-[10px] font-mono text-slate-400 truncate" title={user?.specialty || `NPI: ${user?.npi || '1942850192'}`}>
+            {user?.specialty || `NPI: ${user?.npi || '1942850192'}`}
           </div>
           <div className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1 mt-0.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />

@@ -30,7 +30,7 @@ export const PatientHeader: React.FC<PatientHeaderProps> = ({
   onOpenMobileSidebar,
   onOpenSosModal
 }) => {
-  const { user, logout, loginAsDemo } = useAuth();
+  const { user, logout } = useAuth();
   const { t } = useLanguage();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);

@@ -52,7 +52,7 @@ import { EmergencySosCountdownModal } from './components/interactive/EmergencySo
 import { sosManager } from './services/sosManager';
 
 function AppContent() {
-  const { isAuthenticated, role, user, logout, loginAsDemo } = useAuth();
+  const { isAuthenticated, role, user, logout } = useAuth();
   const [currentRoute, setCurrentRoute] = useState<RoutePath>(() => {
     try {
       const p = window.location.pathname;
@@ -63,7 +63,7 @@ function AppContent() {
   });
   const [isAssessmentModalOpen, setIsAssessmentModalOpen] = useState(false);
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
-  const [registeredEmail, setRegisteredEmail] = useState('aryan@example.com');
+  const [registeredEmail, setRegisteredEmail] = useState('');
 
   // Check for immediate emergency SOS triggers bypassing all auth
   useEffect(() => {
@@ -250,28 +250,19 @@ function AppContent() {
               <div className="pt-2 flex flex-col gap-2.5">
                 <button
                   onClick={() => {
-                    loginAsDemo('doctor');
-                    navigateTo('/doctor');
-                  }}
-                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors flex items-center justify-center gap-2"
-                >
-                  <Stethoscope className="w-4 h-4" />
-                  <span>Enter Clinician Portal (Dr. Sarah Chen, MD)</span>
-                </button>
-                <button
-                  onClick={() => navigateTo('/dashboard')}
-                  className="w-full py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-medium transition-colors"
-                >
-                  Return to Patient Portal
-                </button>
-                <button
-                  onClick={() => {
                     logout();
                     navigateTo('/login');
                   }}
-                  className="w-full py-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-[11px] font-medium transition-colors"
+                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
                 >
-                  Sign Out & Log In with Custom Credentials
+                  <Stethoscope className="w-4 h-4" />
+                  <span>Sign In with Clinician Credentials</span>
+                </button>
+                <button
+                  onClick={() => navigateTo('/dashboard')}
+                  className="w-full py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-medium transition-colors cursor-pointer"
+                >
+                  Return to Patient Portal
                 </button>
               </div>
             </div>

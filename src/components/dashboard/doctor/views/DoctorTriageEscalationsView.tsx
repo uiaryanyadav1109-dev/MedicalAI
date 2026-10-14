@@ -59,49 +59,56 @@ export const DoctorTriageEscalationsView: React.FC<DoctorTriageEscalationsViewPr
 
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const loadData = async (isBackground = false) => {
-    if (!isBackground) setLoading(true);
-    try {
-      const [escs, pols, notifs] = await Promise.all([
-        clinicalStore.fetchTriageEscalations(),
-        clinicalStore.fetchEscalationPolicies(),
-        clinicalStore.fetchMaskedNotifications()
-      ]);
-
-      if (escs) {
-        setEscalations(escs);
-        if (!selectedEscalation && escs.length > 0) {
-          setSelectedEscalation(escs[0]);
-        } else if (selectedEscalation) {
-          const updatedSelected = escs.find((e: TriageEscalationRecord) => e.id === selectedEscalation.id);
-          if (updatedSelected) setSelectedEscalation(updatedSelected);
-        }
-      }
-
-      if (pols) setPolicies(pols);
-      if (notifs) setNotifications(notifs);
-      setLastSynced(new Date());
-    } catch (e) {
-      console.warn('Failed to load triage escalations data', e);
-    } finally {
-      if (!isBackground) setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadData();
+    let isMounted = true;
 
-    // Live background polling every 8 seconds for urgent emergency updates
+    const safeLoadData = async (isBackground = false) => {
+      if (!isBackground && isMounted) setLoading(true);
+      try {
+        const [escs, pols, notifs] = await Promise.all([
+          clinicalStore.fetchTriageEscalations(),
+          clinicalStore.fetchEscalationPolicies(),
+          clinicalStore.fetchMaskedNotifications()
+        ]);
+
+        if (!isMounted) return;
+
+        if (escs) {
+          setEscalations(escs);
+          if (!selectedEscalation && escs.length > 0) {
+            setSelectedEscalation(escs[0]);
+          } else if (selectedEscalation) {
+            const updatedSelected = escs.find((e: TriageEscalationRecord) => e.id === selectedEscalation.id);
+            if (updatedSelected) setSelectedEscalation(updatedSelected);
+          }
+        }
+
+        if (pols) setPolicies(pols);
+        if (notifs) setNotifications(notifs);
+        setLastSynced(new Date());
+      } catch (e) {
+        console.warn('Failed to load triage escalations data', e);
+      } finally {
+        if (!isBackground && isMounted) setLoading(false);
+      }
+    };
+
+    safeLoadData();
+
+    // Live background polling every 15 seconds for urgent emergency updates
     const interval = setInterval(() => {
-      loadData(true);
-    }, 8000);
+      safeLoadData(true);
+    }, 15000);
 
     const unsub = clinicalStore.subscribe(() => {
-      const current = clinicalStore.getTriageEscalations();
-      if (current.length > 0) setEscalations(current);
+      if (isMounted) {
+        const current = clinicalStore.getTriageEscalations();
+        if (current.length > 0) setEscalations(current);
+      }
     });
 
     return () => {
+      isMounted = false;
       clearInterval(interval);
       unsub();
     };

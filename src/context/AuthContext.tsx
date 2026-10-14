@@ -2,13 +2,14 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole, EmergencyContact, PatientOnboardingData } from '../types';
 import { firebaseAuthService } from '../services/firebase/firebaseAuthService';
 import { isFirebaseConfigured } from '../services/firebase/firebaseConfig';
+import { DOCTOR_CREDENTIALS, findDoctorCredential, doctorCredentialToUser } from '../data/doctorCredentials';
 
 interface AuthContextType {
   user: User | null;
   role: UserRole | null;
   isAuthenticated: boolean;
   login: (email: string, password: string, role?: UserRole) => Promise<{ success: boolean; error?: string }>;
-  loginAsDemo: (role: UserRole) => void;
+  loginAsDemo: (role: UserRole, doctorId?: string) => void;
   loginWithGoogle: (role?: UserRole) => Promise<{ success: boolean; error?: string }>;
   loginWithGoogleAccount: (account: { email: string; name: string; photoUrl?: string; uid: string }, role?: UserRole) => Promise<{ success: boolean; error?: string }>;
   signup: (data: { fullName: string; email: string; password: string; phone?: string; role?: UserRole }) => Promise<{ success: boolean; error?: string }>;
@@ -235,11 +236,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.warn('[Firebase] Redirect check error:', err);
         });
 
-      // Synchronize Firebase auth state
+      // Synchronize Firebase auth state safely (only clear if an active Firebase session was explicitly signed out)
+      let hadActiveSession = false;
       const unsubscribe = firebaseAuthService.subscribeToAuthState((firebaseUser) => {
         if (!isMounted) return;
-        if (!firebaseUser && user?.authProvider === 'google') {
-          // Firebase session ended
+        if (firebaseUser) {
+          hadActiveSession = true;
+        } else if (hadActiveSession) {
+          // Firebase session ended explicitly after being active
           setUser(null);
         }
       });
@@ -265,30 +269,82 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, error: 'Email or password is incorrect. Please try again.' };
     }
 
+    // Check for pre-configured doctor credentials
+    const matchedDoctor = findDoctorCredential(email.trim());
+
     // Role inference if not explicitly specified
     const inferredRole: UserRole =
-      role === 'doctor' || email.toLowerCase().includes('doctor') || email.toLowerCase().includes('dr.')
+      matchedDoctor || role === 'doctor' || email.toLowerCase().includes('doctor') || email.toLowerCase().includes('dr.')
         ? 'doctor'
         : 'patient';
 
-    const newUser: User =
-      inferredRole === 'doctor'
-        ? {
-            ...DEMO_DOCTOR,
-            email: email.trim(),
-            name: email.startsWith('dr.') ? 'Dr. ' + email.split('@')[0].slice(3) : DEMO_DOCTOR.name
-          }
-        : {
-            ...DEMO_PATIENT,
-            email: email.trim()
-          };
+    let newUser: User;
+    if (inferredRole === 'doctor') {
+      if (matchedDoctor) {
+        newUser = doctorCredentialToUser(matchedDoctor);
+      } else {
+        const docName = email.startsWith('dr.')
+          ? 'Dr. ' + email.split('@')[0].slice(3).replace(/[._]/g, ' ')
+          : 'Dr. ' + email.split('@')[0].replace(/[._]/g, ' ');
+        newUser = {
+          id: `doc-${Date.now()}`,
+          name: docName,
+          firstName: docName.split(' ')[1] || 'Doctor',
+          lastName: docName.split(' ')[2] || '',
+          email: email.trim(),
+          role: 'doctor',
+          specialty: 'General Practice & Clinical Intelligence',
+          hospital: 'Medical AI Clinical Network',
+          department: 'Ambulatory Care & Triage',
+          npi: `${Math.floor(1000000000 + Math.random() * 9000000000)}`,
+          licenseNumber: `MD-${Math.floor(100000 + Math.random() * 900000)}`,
+          phone: '+1 (555) 000-0000'
+        };
+      }
+    } else {
+      const pName = email.split('@')[0].replace(/[._]/g, ' ');
+      const cleanName = pName.charAt(0).toUpperCase() + pName.slice(1);
+      const generatedId = `MAI-${Math.floor(10000 + Math.random() * 90000)}`;
+      newUser = {
+        id: `pat-${Date.now()}`,
+        name: cleanName,
+        firstName: cleanName,
+        lastName: '',
+        preferredName: cleanName,
+        email: email.trim(),
+        role: 'patient',
+        patientId: generatedId,
+        mrn: generatedId,
+        gender: 'Not Specified',
+        preferredLanguage: 'English',
+        dateOfBirth: '2000-01-01',
+        phone: '+1 (555) 000-0000',
+        allergies: [],
+        allergyDetails: [],
+        medicationDetails: [],
+        medicalConditions: [],
+        pastConditions: [],
+        surgicalHistory: [],
+        familyMedicalHistory: [],
+        emergencyContacts: [],
+        cardStatus: 'active',
+        hasCompletedOnboarding: false
+      };
+    }
 
     setUser(newUser);
     return { success: true };
   };
 
-  const loginAsDemo = (demoRole: UserRole) => {
+  const loginAsDemo = (demoRole: UserRole, doctorId?: string) => {
     if (demoRole === 'doctor') {
+      if (doctorId) {
+        const found = findDoctorCredential(doctorId);
+        if (found) {
+          setUser(doctorCredentialToUser(found));
+          return;
+        }
+      }
       setUser(DEMO_DOCTOR);
     } else {
       setUser(DEMO_PATIENT);
@@ -366,19 +422,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const assignedRole = data.role || 'patient';
+    const names = data.fullName.trim().split(' ');
+    const firstName = names[0] || '';
+    const lastName = names.slice(1).join(' ') || '';
+    const randomSuffix = Math.floor(10000 + Math.random() * 90000);
+    const generatedId = `MAI-${randomSuffix}`;
+
     const newUser: User =
       assignedRole === 'doctor'
         ? {
-            ...DEMO_DOCTOR,
+            id: `doc-${Date.now()}`,
             name: data.fullName.startsWith('Dr.') ? data.fullName : 'Dr. ' + data.fullName,
+            firstName,
+            lastName,
             email: data.email.trim(),
-            phone: data.phone
+            role: 'doctor',
+            specialty: 'General Practice & Clinical Intelligence',
+            hospital: 'Medical AI Clinical Network',
+            department: 'Ambulatory Care & Triage',
+            phone: data.phone || '+1 (555) 000-0000',
+            npi: `${Math.floor(1000000000 + Math.random() * 9000000000)}`,
+            licenseNumber: `MD-${Math.floor(100000 + Math.random() * 900000)}`
           }
         : {
-            ...DEMO_PATIENT,
+            id: `pat-${Date.now()}`,
             name: data.fullName.trim(),
+            firstName,
+            lastName,
+            preferredName: firstName,
             email: data.email.trim(),
-            phone: data.phone
+            role: 'patient',
+            patientId: generatedId,
+            mrn: generatedId,
+            gender: 'Not Specified',
+            preferredLanguage: 'English',
+            dateOfBirth: '2000-01-01',
+            phone: data.phone || '+1 (555) 000-0000',
+            allergies: [],
+            allergyDetails: [],
+            medicationDetails: [],
+            medicalConditions: [],
+            pastConditions: [],
+            surgicalHistory: [],
+            familyMedicalHistory: [],
+            emergencyContacts: [],
+            cardStatus: 'active',
+            hasCompletedOnboarding: false
           };
 
     setUser(newUser);

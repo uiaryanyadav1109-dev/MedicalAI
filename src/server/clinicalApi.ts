@@ -1085,13 +1085,6 @@ export function createClinicalApiRouter() {
     const appointments = medicalDb.read().appointments || [];
     const handoffs = medicalDb.read().handoffs || [];
 
-    // Log PHI queue access in audit trail
-    medicalDb.logAudit({
-      actor: clinician.name,
-      action: 'VIEW_DOCTOR_DASHBOARD',
-      details: 'Accessed clinical dashboard overview & telemetry metrics'
-    });
-
     // Counts by urgency
     const urgencyCounts = {
       emergency: allPatients.filter((p) => p.triageStatus === 'emergency').length,

@@ -66,9 +66,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onOpenAssessme
   const resolveTargetRoute = (fallbackRoute: RoutePath): RoutePath => {
     try {
       const intended = sessionStorage.getItem('medical_ai_intended_route') as RoutePath | null;
-      if (intended && (intended.startsWith('/dashboard') || intended.startsWith('/doctor'))) {
+      if (intended) {
+        if (portalType === 'clinician' && intended.startsWith('/doctor')) {
+          sessionStorage.removeItem('medical_ai_intended_route');
+          return intended;
+        }
+        if (portalType === 'patient' && intended.startsWith('/dashboard')) {
+          sessionStorage.removeItem('medical_ai_intended_route');
+          return intended;
+        }
+        // Clear mismatched intended route from previous session
         sessionStorage.removeItem('medical_ai_intended_route');
-        return intended;
       }
     } catch {
       // safe fallback
@@ -194,6 +202,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onOpenAssessme
                 <span>Clinician / EMR Link</span>
               </button>
             </div>
+
 
 
             {/* Server Error Banner */}

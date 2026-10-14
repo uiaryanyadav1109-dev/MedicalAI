@@ -43,7 +43,7 @@ export const QrScanSharePage: React.FC<QrScanSharePageProps> = ({
   token,
   onNavigateHome
 }) => {
-  const { user, role, isAuthenticated, loginAsDemo } = useAuth();
+  const { user, role, isAuthenticated, logout } = useAuth();
 
   // Resolution state
   const [resolution, setResolution] = useState<QrTokenResolution | null>(null);
@@ -668,10 +668,13 @@ export const QrScanSharePage: React.FC<QrScanSharePageProps> = ({
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
-                    onClick={() => loginAsDemo(role === 'doctor' ? 'patient' : 'doctor')}
+                    onClick={() => {
+                      logout();
+                      window.location.href = '/login';
+                    }}
                     className="text-[11px] text-blue-400 hover:text-blue-300 underline font-mono cursor-pointer"
                   >
-                    Switch Demo
+                    Switch Account
                   </button>
                 </div>
               </div>
@@ -684,21 +687,13 @@ export const QrScanSharePage: React.FC<QrScanSharePageProps> = ({
                   </div>
                 </div>
                 <div className="flex items-center gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => loginAsDemo('doctor')}
+                  <a
+                    href="/login"
                     className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <Stethoscope className="w-3.5 h-3.5" />
-                    <span>Enter as Doctor (Dr. Sarah Chen)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => loginAsDemo('patient')}
-                    className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold cursor-pointer"
-                  >
-                    Enter as Caregiver
-                  </button>
+                    <span>Sign In to Request Access</span>
+                  </a>
                 </div>
               </div>
             )}

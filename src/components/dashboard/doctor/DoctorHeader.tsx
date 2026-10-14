@@ -37,7 +37,7 @@ export const DoctorHeader: React.FC<DoctorHeaderProps> = ({
   onSearchChange,
   onSelectPatient
 }) => {
-  const { user, loginAsDemo } = useAuth();
+  const { user } = useAuth();
   const { t } = useLanguage();
   const [search, setSearch] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
@@ -48,9 +48,13 @@ export const DoctorHeader: React.FC<DoctorHeaderProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    let isMounted = true;
     clinicalStore.fetchDoctorDashboard().then((data) => {
-      if (data) setDashboardData(data);
+      if (isMounted && data) setDashboardData(data);
     });
+    return () => {
+      isMounted = false;
+    };
   }, [currentRoute]);
 
   const getPageTitle = (route: RoutePath) => {
@@ -192,18 +196,6 @@ export const DoctorHeader: React.FC<DoctorHeaderProps> = ({
             )}
           </div>
 
-          {/* Quick Role Switcher for testing */}
-          <button
-            onClick={() => {
-              loginAsDemo('patient');
-              onNavigate('/dashboard');
-            }}
-            className="px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200 text-xs font-medium flex items-center gap-1.5 transition-colors"
-            title="Switch to Patient Dashboard view"
-          >
-            <User className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-            <span className="hidden md:inline">Patient Portal</span>
-          </button>
 
           {/* Language Selector */}
           <LanguageSelector variant="compact" />
