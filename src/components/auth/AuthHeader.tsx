@@ -1,6 +1,7 @@
 import React from 'react';
 import { RoutePath } from '../../types';
-import { Activity, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import { MedicalLogo } from '../common/MedicalLogo';
 
 interface AuthHeaderProps {
   currentMode: 'login' | 'signup' | 'forgot' | 'reset' | 'verify';
@@ -13,15 +14,10 @@ export const AuthHeader: React.FC<AuthHeaderProps> = ({ currentMode, onNavigate 
       {/* Brand Zone */}
       <button
         onClick={() => onNavigate('/')}
-        className="flex items-center gap-2 group text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded cursor-pointer"
+        className="group text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded cursor-pointer"
         aria-label="Medical AI home"
       >
-        <span className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold tracking-tight shadow-xs group-hover:bg-blue-700 transition-colors">
-          <Activity className="w-4 h-4 text-white" />
-        </span>
-        <span className="text-base font-bold tracking-tight text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-          MEDICAL AI
-        </span>
+        <MedicalLogo size="sm" layout="compact" />
       </button>
 
       {/* Contextual Action Link */}

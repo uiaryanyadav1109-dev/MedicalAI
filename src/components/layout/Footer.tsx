@@ -5,8 +5,8 @@ import {
   ShieldCheck,
   HeartHandshake,
   Smartphone
-} from 'lucide-react';
 import { useLanguage } from '../../i18n';
+import { MedicalLogo } from '../common/MedicalLogo';
 
 interface FooterProps {
   onNavigate: (route: RoutePath) => void;
@@ -28,13 +28,8 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenDownloadApp })
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12 items-start">
           {/* Brand & Purpose Column */}
           <div className="md:col-span-5 space-y-3.5">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#1769AA] to-[#16A6A1] text-white flex items-center justify-center font-bold shadow-xs">
-                <Activity className="w-4 h-4 text-white" />
-              </div>
-              <span className="text-lg font-extrabold text-white tracking-tight">
-                Medical<span className="text-[#38BDF8]">AI</span>
-              </span>
+            <div className="cursor-pointer" onClick={() => handleNav('/')}>
+              <MedicalLogo size="md" layout="compact" />
             </div>
             <p className="text-slate-300 text-xs sm:text-sm max-w-sm leading-relaxed">
               AI-assisted health guidance and connected healthcare tools in one place.

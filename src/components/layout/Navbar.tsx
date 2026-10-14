@@ -19,6 +19,7 @@ import { useAuth } from '../../context/AuthContext';
 import { ProfileAvatar } from '../common/ProfileAvatar';
 import { ThemeToggle } from '../common/ThemeToggle';
 import { LanguageSelector } from '../common/LanguageSelector';
+import { MedicalLogo } from '../common/MedicalLogo';
 import { useLanguage } from '../../i18n';
 
 interface NavbarProps {
@@ -105,20 +106,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Logo & Brand Identity */}
           <button
             onClick={() => handleNavClick('/')}
-            className="flex items-center gap-2.5 group text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1769AA] rounded-lg cursor-pointer shrink-0"
+            className="group text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1769AA] rounded-lg cursor-pointer shrink-0"
             aria-label="MedicalAI Home"
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#102A43] via-[#1769AA] to-[#16A6A1] text-white flex items-center justify-center font-bold shadow-md shadow-blue-500/10 group-hover:shadow-blue-500/25 transition-all">
-              <Activity className="w-5 h-5 text-white animate-pulse" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-lg font-extrabold tracking-tight text-[#102A43] dark:text-white flex items-center gap-1 leading-tight">
-                Medical<span className="text-[#1769AA] dark:text-[#38BDF8]">AI</span>
-              </span>
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#64748B] dark:text-slate-400">
-                Clinical Intelligence
-              </span>
-            </div>
+            <MedicalLogo size="md" layout="full" />
           </button>
 
           {/* Desktop Navigation Links - Centered & Balanced */}

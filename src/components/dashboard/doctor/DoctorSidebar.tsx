@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { RoutePath } from '../../../types';
 import { useAuth } from '../../../context/AuthContext';
 import { clinicalStore } from '../../../services/clinicalStore';
+import { MedicalLogo } from '../../common/MedicalLogo';
 import {
   Activity,
   Users,
@@ -166,17 +167,9 @@ export const DoctorSidebar: React.FC<DoctorSidebarProps> = ({
       <div className="p-5 border-b border-slate-800 flex items-center justify-between">
         <button
           onClick={() => handleNav('/')}
-          className="flex items-center gap-2 group text-left focus:outline-none"
+          className="group text-left focus:outline-none"
         >
-          <span className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold tracking-tight shadow-xs group-hover:bg-emerald-500 transition-colors">
-            <Activity className="w-4 h-4 text-white" />
-          </span>
-          <div>
-            <span className="text-base font-bold tracking-tight text-white block">MEDICAL AI</span>
-            <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-wider block">
-              Clinician EMR
-            </span>
-          </div>
+          <MedicalLogo size="sm" variant="doctor" subtitle="Clinician EMR" />
         </button>
         <button
           onClick={onCloseMobile}

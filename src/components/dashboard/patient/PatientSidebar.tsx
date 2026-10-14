@@ -3,6 +3,7 @@ import { RoutePath } from '../../../types';
 import { useAuth } from '../../../context/AuthContext';
 import { useLanguage } from '../../../i18n';
 import { ProfileAvatar } from '../../common/ProfileAvatar';
+import { MedicalLogo } from '../../common/MedicalLogo';
 import {
   Activity,
   LayoutDashboard,
@@ -81,17 +82,9 @@ export const PatientSidebar: React.FC<PatientSidebarProps> = ({
       <div className="p-5 border-b border-slate-800 flex items-center justify-between">
         <button
           onClick={() => handleNav('/')}
-          className="flex items-center gap-2 group text-left focus:outline-none"
+          className="group text-left focus:outline-none"
         >
-          <span className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold tracking-tight shadow-xs group-hover:bg-blue-700 transition-colors">
-            <Activity className="w-4 h-4 text-white" />
-          </span>
-          <div>
-            <span className="text-base font-bold tracking-tight text-white block">MEDICAL AI</span>
-            <span className="text-[10px] font-mono text-blue-400 uppercase tracking-wider block">
-              {t('dashboard.patientPortal')}
-            </span>
-          </div>
+          <MedicalLogo size="sm" variant="patient" subtitle={t('dashboard.patientPortal')} />
         </button>
         <button
           onClick={onCloseMobile}

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="fav-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0E1A2D" />
+      <stop offset="60%" stop-color="#123E67" />
+      <stop offset="100%" stop-color="#0891B2" />
+    </linearGradient>
+    <linearGradient id="fav-pulse" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#34D399" />
+      <stop offset="50%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#38BDF8" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background rounded icon -->
+  <rect width="64" height="64" rx="16" fill="url(#fav-bg)" />
+  <rect x="0.5" y="0.5" width="63" height="63" rx="15.5" stroke="rgba(255,255,255,0.2)" stroke-width="1" />
+
+  <!-- Medical Cross silhouette -->
+  <g opacity="0.25" fill="#FFFFFF">
+    <rect x="27" y="12" width="10" height="40" rx="5" />
+    <rect x="12" y="27" width="40" height="10" rx="5" />
+  </g>
+
+  <!-- High-contrast pulse wave -->
+  <path
+    d="M 8 32 L 20 32 L 25 21 L 30 43 L 36 14 L 43 50 L 48 29 L 52 35 L 56 32"
+    fill="none"
+    stroke="url(#fav-pulse)"
+    stroke-width="4.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <circle cx="36" cy="14" r="3" fill="#FFFFFF" />
+</svg>
