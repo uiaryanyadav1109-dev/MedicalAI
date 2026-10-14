@@ -1,10 +1,10 @@
 import React from 'react';
 import { RoutePath } from '../../types';
 import {
-  Activity,
   ShieldCheck,
   HeartHandshake,
   Smartphone
+} from 'lucide-react';
 import { useLanguage } from '../../i18n';
 import { MedicalLogo } from '../common/MedicalLogo';
 
