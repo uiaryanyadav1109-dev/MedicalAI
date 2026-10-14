@@ -1,326 +1,290 @@
-# 🏥 MedicalAI
+<div align="center">
+
+# MedicalAI
 ### AI-Assisted Clinical Intelligence & Preliminary Triage
 
-**Smarter Care, Better Access.**
+**A healthcare technology project for making health information easier to understand and care workflows easier to organize.**
 
-An AI-assisted healthcare platform designed to make preliminary health information easier to access and understand. MedicalAI brings together AI-powered health conversations, patient and doctor portals, multilingual accessibility, patient information workflows, and web/mobile project components in one platform.
+[![React](https://img.shields.io/badge/Frontend-React-61DAFB?logo=react&logoColor=20232A)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Build-Vite-646CFF?logo=vite&logoColor=white)](https://vite.dev/)
+[![Node.js](https://img.shields.io/badge/Backend-Node.js-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![Express](https://img.shields.io/badge/API-Express-000000?logo=express&logoColor=white)](https://expressjs.com/)
+[![Firebase](https://img.shields.io/badge/Platform-Firebase-FFCA28?logo=firebase&logoColor=202124)](https://firebase.google.com/)
+[![Gemini](https://img.shields.io/badge/AI-Google%20Gemini-8E75B2?logo=googlegemini&logoColor=white)](https://ai.google.dev/)
 
-<p align="left">
-  <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
-  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js" />
-  <img src="https://img.shields.io/badge/Express.js-0F172A?style=for-the-badge&logo=express&logoColor=white" alt="Express.js" />
-  <img src="https://img.shields.io/badge/Google_Gemini-4285F4?style=for-the-badge&logo=googlegemini&logoColor=white" alt="Google Gemini" />
-  <img src="https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black" alt="Firebase" />
-  <img src="https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="Tailwind CSS" />
-</p>
+[Repository](https://github.com/uiaryanyadav1109-dev/MedicalAI) · [Issues](https://github.com/uiaryanyadav1109-dev/MedicalAI/issues) · [Contribute](https://github.com/uiaryanyadav1109-dev/MedicalAI/issues)
 
-<p align="left">
-  <img src="https://img.shields.io/badge/License-MIT-14B8A6?style=flat-square" alt="MIT License" />
-  <img src="https://img.shields.io/badge/Status-Active_Development-2563EB?style=flat-square" alt="Development Status" />
-  <img src="https://img.shields.io/badge/Contributions-Welcome-16A34A?style=flat-square" alt="Contributions Welcome" />
-</p>
-
-<p align="left">
-  <a href="https://github.com/uiaryanyadav1109-dev/MedicalAI">
-    <img src="https://img.shields.io/github/stars/uiaryanyadav1109-dev/MedicalAI?style=social" alt="GitHub Stars" />
-  </a>
-  <a href="https://github.com/uiaryanyadav1109-dev/MedicalAI/forks">
-    <img src="https://img.shields.io/github/forks/uiaryanyadav1109-dev/MedicalAI?style=social" alt="GitHub Forks" />
-  </a>
-  <a href="https://github.com/uiaryanyadav1109-dev/MedicalAI/issues">
-    <img src="https://img.shields.io/github/issues/uiaryanyadav1109-dev/MedicalAI" alt="GitHub Issues" />
-  </a>
-  <a href="https://github.com/uiaryanyadav1109-dev/MedicalAI/pulls">
-    <img src="https://img.shields.io/github/issues-pr/uiaryanyadav1109-dev/MedicalAI" alt="GitHub Pull Requests" />
-  </a>
-</p>
-
-**[GitHub Repository](https://github.com/uiaryanyadav1109-dev/MedicalAI) · [Live Demo](https://medicalai-1.onrender.com/)**
+</div>
 
 ---
 
-## 📌 Table of Contents
+## Overview
 
-- [About the Project](#-about-the-project)
-- [Live Demo](#-live-demo)
-- [Features](#-features)
-- [Tech Stack](#-tech-stack)
-- [System Architecture](#-system-architecture)
-- [Project Structure](#-project-structure)
-- [Pages and Modules](#-pages-and-modules)
-- [Quick Start](#-quick-start)
-- [Environment Variables](#-environment-variables)
-- [Running the App](#-running-the-app)
-- [API Reference](#-api-reference)
-- [Security and Privacy](#-security-and-privacy)
-- [Future Scope](#-future-scope)
-- [Contributing](#-contributing)
-- [Medical Disclaimer](#-medical-disclaimer)
+**MedicalAI** is an AI-assisted healthcare platform concept that brings preliminary health information, patient details, and care-support workflows into one digital experience. The project combines a modern web interface with backend APIs, AI integration, and Firebase-based services where configured.
 
----
+The aim is to make health information easier to navigate and help users organize relevant care information—not to replace clinicians or emergency services.
 
-## 🏥 About the Project
+> **Medical disclaimer:** MedicalAI is not a medical device or a substitute for professional medical advice, diagnosis, or treatment. AI-generated content may be inaccurate. Do not use it to make urgent or high-stakes medical decisions.
 
-Healthcare information can be difficult to understand, language barriers can limit access, and patient information may be spread across different systems.
+## Features
 
-**MedicalAI** explores how artificial intelligence and full-stack development can help address these challenges through a unified digital healthcare experience.
-
-The project focuses on accessible health information, AI-assisted conversations, patient-oriented workflows, and doctor-facing interfaces.
-
-### 🎯 Project Goals
-
-- Make preliminary health information easier to understand.
-- Explore AI-assisted healthcare conversations.
-- Support multilingual and voice-based accessibility.
-- Organize patient information through digital workflows.
-- Build a foundation for web and mobile healthcare experiences.
-
-## 🌐 Live Demo
-
-- **Website:** https://medicalai-1.onrender.com/
-- **Source Code:** https://github.com/uiaryanyadav1109-dev/MedicalAI
-
-*Some features may require configuration or may still be under development. Verify the current deployment before relying on individual features.*
-
-## ✨ Features
-
-| Feature | Description |
+| Capability | Purpose |
 |---|---|
-| 🤖 AI Medical Chatbot | AI-assisted preliminary health information |
-| 🩺 Patient Portal | Patient-facing profile and information workflows |
-| 👨‍⚕️ Doctor Portal | Doctor-oriented interface |
-| 🌐 Multilingual Support | Targeted support for English, Hindi, Bengali, and Hinglish |
-| 🔊 Voice Assistance | Read-aloud and voice-related accessibility features |
-| 🪪 Digital Patient ID | Patient identification and QR-code workflows |
-| 🔐 Authentication | Firebase-based authentication where configured |
-| 🚨 Emergency Workflow | Interface for emergency-related functionality |
-| 💊 Medicine Reminders | Planned or implemented medication reminder workflows, depending on current build |
-| 📱 Mobile Components | Android and iOS project components |
-| 🌙 Responsive UI | User interface designed for different screen sizes |
+| AI health assistant | Ask health-related questions and receive general informational responses |
+| Preliminary symptom guidance | Organize reported symptoms into non-diagnostic information |
+| Patient profile | Keep relevant profile and health details organized |
+| Patient ID and QR workflows | Support quick access to selected patient information |
+| Emergency support concept | Support an SOS flow and location sharing where implemented and configured |
+| Medication reminders | Help users track scheduled reminders where implemented |
+| Doctor portal | Support a more structured patient-care workflow where implemented |
+| Accessibility direction | Multilingual and voice-oriented interaction goals |
+| Responsive experience | Build toward usability across screen sizes and devices |
 
-## 🛠️ Tech Stack
+**Feature status:** Availability depends on the current code and deployment configuration. Treat features as implemented only after verifying them in the repository and testing them end to end.
 
-| Technology | Purpose |
-|---|---|
-| React | Frontend user interface |
-| TypeScript | Typed application development |
-| Vite | Frontend development and build tooling |
-| Node.js | Backend JavaScript runtime |
-| Express.js | Backend API and server |
-| Google Gemini API | AI-powered conversations |
-| Firebase | Authentication and data services, where configured |
-| Tailwind CSS | UI styling |
-| Lucide React | Icons |
-| Motion | Interface animations |
-| QRCode libraries | QR-code generation |
-| Git and GitHub | Version control and collaboration |
-| Render | Deployment configuration |
+## Why MedicalAI?
 
-## 🏗️ System Architecture
+- **Connected workflows:** bring health guidance and care-support tools together.
+- **AI-assisted interaction:** integrate natural-language responses through a configured AI service.
+- **Patient-centered design:** organize relevant information in a more accessible experience.
+- **Designed to evolve:** keep UI, API, AI, and data responsibilities separated where the repository architecture supports it.
+- **Safety-aware direction:** make it clear that AI output is informational and does not replace qualified care.
+
+## User Workflow
 
 ```mermaid
 flowchart TD
-    A["Patient / Doctor"] --> B["React + TypeScript Frontend"]
-    B --> C["Node.js + Express Backend"]
-    C --> D["Chat API"]
-    D --> E["Google Gemini API"]
-    C --> F["Firebase Services"]
-    B --> G["QR and Voice Features"]
-    B --> H["Mobile Components"]
-
-    classDef frontend fill:#CCFBF1,stroke:#0D9488,color:#134E4A
-    classDef backend fill:#DBEAFE,stroke:#2563EB,color:#1E3A8A
-    classDef services fill:#DCFCE7,stroke:#16A34A,color:#14532D
-
-    class A,B,G,H frontend
-    class C,D backend
-    class E,F services
+    A[Open MedicalAI] --> B{Choose a workflow}
+    B --> C[AI Health Assistant]
+    B --> D[Patient Profile]
+    B --> E[Care Support Tools]
+    C --> F[Backend API]
+    F --> G[Configured AI Service]
+    G --> H[Informational Response]
+    H --> I[Safety Guidance and Next Steps]
+    D --> J[Configured Firebase Services]
+    E --> J
+    I --> K[Contact a clinician when appropriate]
 ```
 
-## 📂 Project Structure
+## Architecture
 
-```text
-MedicalAI/
-├── src/             # Frontend application source
-├── public/          # Static assets
-├── docs/            # Project documentation
-├── scripts/         # Utility scripts
-├── android/         # Android project files
-├── ios/             # iOS project files
-├── mobile-app/      # Mobile-related code
-├── server.ts        # Express server entry point
-├── package.json     # Dependencies and scripts
-├── vite.config.ts   # Vite configuration
-├── Dockerfile       # Container configuration
-└── render.yaml      # Render deployment configuration
+```mermaid
+flowchart LR
+    U[Patient or Clinician] --> WEB[React + Vite Client]
+    WEB --> API[Node.js + Express API]
+    API --> AI[Google Gemini API]
+    API --> FB[Firebase Services]
+    WEB --> UI[Responsive UI]
+    FB --> DATA[Configured Auth and Data Services]
 ```
 
-## 🧭 Pages and Modules
+The diagram is a conceptual view of the intended stack. Confirm the actual integrations and data flow in the current source code before treating every connection as implemented.
 
-The intended application experience includes the following modules. Availability depends on the current implementation.
+## Technology Stack
 
-- **Landing Page:** Project introduction and entry point.
-- **Authentication:** Registration and sign-in.
-- **Patient Dashboard:** Patient-facing features and information.
-- **Doctor Portal:** Doctor-oriented workflows.
-- **AI Chat:** Preliminary health information and AI conversations.
-- **Patient ID and QR:** Patient identification and information-sharing workflows.
-- **Voice Accessibility:** Read-aloud and voice-related functionality.
-- **Emergency Workflow:** Emergency-related interface and support features.
-- **Mobile Experience:** Android and iOS project components.
+| Layer | Technology | Role |
+|---|---|---|
+| Frontend | React and Vite | User interface and client-side workflows |
+| Backend | Node.js and Express | API routes and server-side operations |
+| AI | Google Gemini API | AI-assisted natural-language responses, if enabled |
+| Authentication/data | Firebase services | Identity and data capabilities, depending on configuration |
+| Version control | Git and GitHub | Source control and collaboration |
+| Deployment | Render or another configured host | Hosting, depending on the active deployment |
 
-## ⚡ Quick Start
+Check the repository's `package.json` files and source code for the exact versions and packages currently in use.
+
+## Getting Started
 
 ### Prerequisites
 
-Install the following before starting:
-
-- [Node.js](https://nodejs.org/) — use a version compatible with the project.
-- npm
+- [Node.js](https://nodejs.org/) and npm
 - [Git](https://git-scm.com/)
-- Firebase project configuration, if required.
-- Google Gemini API key for AI functionality.
+- A Google AI Studio API key if Gemini-powered features are enabled
+- A Firebase project if the application uses Firebase services
+
+Verify the installations in **Windows PowerShell**:
+
+```powershell
+node --version
+npm --version
+git --version
+```
 
 ### 1. Clone the repository
 
 ```powershell
 git clone https://github.com/uiaryanyadav1109-dev/MedicalAI.git
-cd MedicalAI
+Set-Location MedicalAI
 ```
 
 ### 2. Install dependencies
 
-```powershell
-npm ci
-```
-
-### 3. Create the environment file
+Inspect the repository's folder structure and `package.json` files first. If the repository uses a single root package, install from the root:
 
 ```powershell
-Copy-Item .env.example .env
+npm install
 ```
 
-### 4. Configure the required variables
+If the frontend and backend are separate applications with their own `package.json` files, install in each folder instead. For example, **only if these folders exist**:
 
-Add the appropriate Firebase and AI settings to `.env`, following the project's environment-variable names.
+```powershell
+Set-Location .\frontend
+npm install
+Set-Location ..\backend
+npm install
+Set-Location ..
+```
 
-### 5. Start the development server
+Use the layout that matches the repository; do not run both approaches blindly.
+
+### 3. Configure environment variables
+
+Check the source code and any `.env.example` files for the exact variable names expected by the application. The following are examples, not a guarantee of the current configuration.
+
+**Backend `.env` example**
+
+```dotenv
+PORT=5000
+GEMINI_API_KEY=replace_with_your_key
+```
+
+**Vite frontend `.env` example**
+
+```dotenv
+VITE_API_BASE_URL=http://localhost:5000
+```
+
+Vite exposes variables prefixed with `VITE_` to client-side code. **Never put private API keys or service-account credentials in a `VITE_` variable.** Keep Gemini secrets on the server and use the exact environment-variable names read by your code.
+
+Security basics:
+
+- Keep `.env` files and service-account JSON files out of Git.
+- Add secrets to the hosting provider's environment settings, not to source code.
+- If a secret is accidentally committed, revoke or rotate it immediately.
+- Firebase client configuration is not a replacement for database security rules or backend authorization.
+
+### 4. Run locally
+
+Run the scripts defined in each `package.json`. For a typical Vite frontend, the command is often:
 
 ```powershell
 npm run dev
 ```
 
-## 🔑 Environment Variables
+For a typical Express backend, use the development script declared by that backend—often `npm run dev` or `npm start`.
 
-The exact variables depend on the current source code and deployment configuration.
+If frontend and backend are separate apps, start them in separate PowerShell terminals from their respective directories. Open the local URL printed by the frontend development server.
 
-| Variable | Purpose |
-|---|---|
-| `VITE_FIREBASE_API_KEY` | Firebase web configuration |
-| `VITE_FIREBASE_AUTH_DOMAIN` | Firebase Authentication domain |
-| `VITE_FIREBASE_PROJECT_ID` | Firebase project identifier |
-| `VITE_FIREBASE_STORAGE_BUCKET` | Firebase Storage configuration |
-| `VITE_FIREBASE_MESSAGING_SENDER_ID` | Firebase messaging configuration |
-| `VITE_FIREBASE_APP_ID` | Firebase web application identifier |
-| `GEMINI_API_KEY` | Server-side Google Gemini API key |
+### 5. Build and test
 
-**Important:**
-- Frontend variables prefixed with `VITE_` are exposed to browser code. Do not put private server secrets in them.
-- Keep `GEMINI_API_KEY` on the backend.
-- Never commit `.env` files containing secrets.
-- Check `.env.example` and the application source for the actual required variable names.
-
-## ▶️ Running the App
-
-Start development:
-
-```powershell
-npm run dev
-```
-
-Build the application:
+From the relevant application directory, run the scripts that actually exist in `package.json`:
 
 ```powershell
 npm run build
+npm run lint
+npm test
 ```
 
-Start the production-style server:
+These are common script names; some repositories do not define all of them. Check the available scripts before running them.
 
-```powershell
-npm start
-```
+## Deployment Checklist
 
-These commands assume the corresponding scripts exist in `package.json`. If a command is unavailable, inspect the `scripts` section and use the configured command.
+For a split frontend/backend deployment:
 
-### Health Check
+1. **Frontend:** set the production API base URL, build the app, and deploy the generated frontend output to a compatible host.
+2. **Backend:** deploy the Express app to a Node-compatible host and configure server-side environment variables.
+3. **Firebase:** configure authorized domains, enabled sign-in providers, and restrictive security rules.
+4. **AI service:** add the Gemini API key to the backend host's secret settings.
+5. **CORS:** allow only the website origins that should access the API.
+6. **End-to-end tests:** verify login, API requests, AI responses, patient-data permissions, QR sharing, and SOS behavior where implemented.
+7. **Logs:** ensure logs and error messages do not expose credentials or sensitive health information.
 
-If the backend exposes a health endpoint, open:
+A deployed frontend does not automatically mean the API, authentication, database, or AI service is configured correctly. Test each service independently.
+
+## Privacy, Security & Medical Safety
+
+Health information is sensitive. Before using real patient data, conduct appropriate privacy, security, and clinical review.
+
+- Collect only information needed for a clear purpose.
+- Enforce authentication and authorization on every protected API and record.
+- Apply least-privilege database rules and validate inputs on the server.
+- Use HTTPS in deployed environments and review retention and deletion behavior.
+- Avoid placing sensitive health details in URLs, analytics, screenshots, or logs.
+- Ensure QR links expose only information the patient has authorized to share.
+- Clearly identify AI-generated content and communicate its limitations.
+- Do not rely on MedicalAI for emergency response, diagnosis, or treatment decisions.
+
+This project README does not claim clinical validation, regulatory approval, or certification.
+
+## Repository Structure
+
+The actual structure may differ. Use the repository itself as the source of truth; the following is illustrative only:
 
 ```text
-http://localhost:<PORT>/health
+MedicalAI/
+├── frontend/        # React + Vite client, if separated
+├── backend/         # Express API, if separated
+├── android/         # Android project, if present
+├── public/          # Static assets, depending on layout
+├── .env.example     # Safe environment template, if maintained
+├── .gitignore
+└── README.md
 ```
 
-Replace `<PORT>` with the port configured for the backend.
+## Contributing
 
-## 🔌 API Reference
-
-The Express backend is intended to handle application APIs and AI chat requests.
-
-| Endpoint | Purpose |
-|---|---|
-| `GET /health` | Backend health check, if configured |
-| `/api/*` | Application API routes, including chat-related routes where configured |
-
-Check `server.ts` and the actual route files for complete endpoint paths, HTTP methods, request bodies, and response formats.
-
-## 🔐 Security and Privacy
-
-- Use authentication and server-side authorization for protected data.
-- Restrict access to patient information based on the user's role and permissions.
-- Keep API keys and private configuration out of source control.
-- Validate API requests and handle errors safely.
-- Use consent-based access to sensitive patient information.
-- Avoid storing or exposing unnecessary patient data.
-- Test security rules before deploying with real user information.
-
-## 🚀 Future Scope
-
-- Stronger role-based access controls and audit logs.
-- Improved multilingual voice interactions.
-- More automated testing and error handling.
-- Reliable, consent-based emergency communication.
-- Better mobile optimization and deployment.
-- Further improvements to privacy and data protection.
-
-## 🤝 Contributing
-
-Contributions, bug reports, and improvement suggestions are welcome!
+Contributions, bug reports, and practical improvements are welcome.
 
 1. Fork the repository.
-2. Create a feature branch.
-3. Make and test your changes.
-4. Commit your work with a clear message.
-5. Open a pull request describing your changes.
+2. Create a focused branch:
 
-For significant changes, open an issue first to discuss the proposed solution.
+   ```powershell
+   git checkout -b feat/your-feature
+   ```
 
-## 📜 License
+3. Make your changes and test them locally.
+4. Commit with a descriptive message:
 
-This project uses the MIT License **if an MIT `LICENSE` file is present in the repository**. Check the repository's license before distributing or reusing the code.
+   ```powershell
+   git add .
+   git commit -m "feat: describe your change"
+   ```
 
-## 🛡️ Medical Disclaimer
+5. Push the branch and open a pull request.
 
-MedicalAI provides AI-assisted preliminary health information. It is not a substitute for professional medical advice, diagnosis, or treatment. In an emergency, contact local emergency services.
+Do not include real patient records, identifiable health information, API keys, or private credentials in commits, issues, screenshots, or test fixtures.
+
+## Roadmap
+
+Potential next steps for the project:
+
+- [ ] Harden authentication and role-based access control
+- [ ] Add automated tests for API routes and critical user journeys
+- [ ] Improve multilingual and accessible voice interaction
+- [ ] Validate consent-based patient QR sharing
+- [ ] Test medication reminders and emergency workflows on real devices
+- [ ] Document production deployment and mobile build steps
+- [ ] Complete privacy, security, and clinical review before real-world use
+
+## Links
+
+- **GitHub repository:** [uiaryanyadav1109-dev/MedicalAI](https://github.com/uiaryanyadav1109-dev/MedicalAI)
+- **Google AI for Developers:** https://ai.google.dev/
+- **Node.js:** https://nodejs.org/
+- **Express:** https://expressjs.com/
+- **Firebase:** https://firebase.google.com/
+
+## License
+
+Check whether the repository contains a `LICENSE` file. If it does not, do not assume that the project is open-source licensed; all rights remain with the copyright holder unless a license is explicitly granted.
 
 ---
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Smarter_Care-Better_Access-0D9488?style=for-the-badge" alt="Smarter Care, Better Access" />
-</p>
+<div align="center">
 
-<h3 align="center">💙 MedicalAI — Smarter Care, Better Access.</h3>
+**MedicalAI — clearer health information, more organized care workflows.**
 
-<p align="center">
-  Built with curiosity, technology, and a focus on healthcare accessibility.
-</p>
+If you find this project useful, consider starring the repository and sharing feedback through GitHub Issues.
+
+</div>
